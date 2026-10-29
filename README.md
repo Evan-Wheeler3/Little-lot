@@ -1,9 +1,10 @@
 # Little Lot
 
-A cozy isometric parking garage idle tycoon. Plain HTML, CSS and JavaScript, no build step.
+A cozy isometric parking garage idle tycoon. Plain HTML, CSS and JavaScript, no build step needed to play (editing the game uses a one-line `./build.sh` that joins `src/` into `game.js`).
 
 - `index.html`, `style.css`: the page
-- `game.js`: the game (scene, traffic, upgrades, franchise loop, local saving)
+- `src/`: the game's source files, in load order. Run `./build.sh` after editing to rebuild `game.js`
+- `game.js`: the built game that the page loads (scene, traffic, garage, upgrades, goals, franchise loop, local saving)
 - `auth.js`: email accounts and cloud saves
 - `config.js`: your Supabase project details (empty until you fill them in)
 - `supabase.sql`: the one table the accounts need
