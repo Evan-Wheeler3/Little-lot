@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#a9e585">
+<title>Little Lot</title>
+<meta name="description" content="A cozy isometric parking garage idle tycoon.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='6' width='52' height='52' rx='14' fill='%233d8bff' stroke='%233b2f5c' stroke-width='5'/%3E%3Ctext x='32' y='46' font-family='Arial' font-weight='bold' font-size='38' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="scene" role="img" aria-label="Isometric parking lot with cartoon cars arriving, parking and paying"></canvas>
+  </div>
+
+  <header class="hud">
+    <div class="hud-in">
+      <div class="left">
+        <div class="brand"><span class="pbadge" aria-hidden="true">P</span><h1>Little Lot</h1></div>
+        <div class="pill star" id="starPill" hidden title="Franchise stars boost all income"><span class="si" aria-hidden="true">&#9733;</span><b id="stars">0</b></div>
+      </div>
+      <div class="money">
+        <div class="pill big" id="moneyPill"><span class="coin" aria-hidden="true">$</span><b id="money">25</b></div>
+        <span class="rate" id="rate">$0.0/s</span>
+      </div>
+      <div class="right">
+        <div class="pill parked"><span class="lbl">Parked</span><b id="parked">0 / 8</b></div>
+        <button class="acct" id="acctBtn" type="button" aria-label="Account" title="Account">
+          <svg class="acct-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>
+          <span class="acct-l" id="acctLetter" hidden></span><i class="acct-dot" id="acctDot" hidden></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <footer class="dock">
+    <div class="dock-in">
+      <button class="open-btn" id="openBtn" type="button" aria-expanded="false" aria-controls="sheet">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6"/></svg>Upgrades
+        <span class="badge" id="badge" hidden>0</span>
+      </button>
+    </div>
+  </footer>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="sheet" id="sheet" role="dialog" aria-label="Upgrades" aria-hidden="true">
+    <div class="sheet-head">
+      <h2>Upgrades</h2>
+      <span class="wallet"><span class="coin" aria-hidden="true">$</span><b id="wallet">25</b></span>
+      <button class="close" id="closeBtn" type="button" aria-label="Close upgrades"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="sheet-tools">
+      <div class="seg" id="tabs" role="tablist" aria-label="Upgrade categories">
+        <button type="button" role="tab" data-tab="build" aria-selected="true">Build<span class="dot" hidden></span></button>
+        <button type="button" role="tab" data-tab="speed" aria-selected="false">Speed<span class="dot" hidden></span></button>
+        <button type="button" role="tab" data-tab="biz" aria-selected="false">Business<span class="dot" hidden></span></button>
+        <button type="button" role="tab" data-tab="fr" aria-selected="false">Franchise<span class="dot" hidden></span></button>
+      </div>
+      <div class="seg qty" id="qty" aria-label="How many to buy">
+        <button type="button" data-qty="1" aria-pressed="true">x1</button>
+        <button type="button" data-qty="10" aria-pressed="false">x10</button>
+        <button type="button" data-qty="max" aria-pressed="false">Max</button>
+      </div>
+    </div>
+    <div class="sheet-body"><section class="tray" id="tray" aria-label="Upgrade options"></section></div>
+  </aside>
+
+  <div class="modal" id="welcome" role="dialog" aria-modal="true" aria-labelledby="welTitle" hidden>
+    <div class="modal-card">
+      <h2 id="welTitle">Welcome back!</h2>
+      <p id="welText">Your lot kept earning while you were away.</p>
+      <div class="amt"><span class="coin" aria-hidden="true">$</span><b id="welAmt">0</b></div>
+      <button class="buy" id="welBtn" type="button">Collect</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <div class="modal" id="acctModal" role="dialog" aria-modal="true" aria-labelledby="acctTitle" hidden>
+    <div class="modal-card acct-card">
+      <div class="acct-head"><h2 id="acctTitle">Account</h2>
+        <button class="close" id="acctClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+
+      <div class="acct-view" id="vGuest">
+        <div class="seg" id="authTabs" role="tablist" aria-label="Log in or create an account">
+          <button type="button" role="tab" data-mode="login" aria-selected="true">Log in</button>
+          <button type="button" role="tab" data-mode="signup" aria-selected="false">Create account</button>
+        </div>
+        <p class="note" id="guestNote">Save your lot to the cloud and pick it up on any device.</p>
+        <form id="authForm" novalidate>
+          <label for="authEmail">Email</label>
+          <input id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
+          <label for="authPass">Password</label>
+          <input id="authPass" type="password" autocomplete="current-password" placeholder="8 characters or more" minlength="8" required>
+          <p class="err" id="authErr" role="alert" hidden></p>
+          <button class="buy" id="authGo" type="submit">Log in</button>
+        </form>
+        <button class="linkbtn" id="forgotBtn" type="button">Forgot password?</button>
+      </div>
+
+      <div class="acct-view" id="vUser" hidden>
+        <p class="who">Signed in as <b id="userEmail"></b></p>
+        <p class="note" id="syncNote">Saved to your account.</p>
+        <button class="buy" id="saveNow" type="button">Save now</button>
+        <button class="buy ghost" id="logoutBtn" type="button">Log out</button>
+        <p class="note small">Logging out switches this device to a guest lot. Your account lot stays safe in the cloud.</p>
+      </div>
+
+      <div class="acct-view" id="vReset" hidden>
+        <p class="note">Choose a new password for your account.</p>
+        <form id="resetForm" novalidate>
+          <label for="newPass">New password</label>
+          <input id="newPass" type="password" autocomplete="new-password" placeholder="8 characters or more" minlength="8" required>
+          <p class="err" id="resetErr" role="alert" hidden></p>
+          <button class="buy" id="resetGo" type="submit">Save password</button>
+        </form>
+      </div>
+
+      <div class="acct-view" id="vCheck" hidden>
+        <p class="note" id="checkNote">Check your email.</p>
+        <button class="buy" id="checkBack" type="button">Back to log in</button>
+      </div>
+
+      <div class="acct-view" id="vOff" hidden>
+        <p class="note">Accounts are not switched on for this copy of the game yet. Your progress still saves on this device.</p>
+      </div>
+      <button class="linkbtn" id="guestBtn" type="button">Keep playing</button>
+    </div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
