@@ -94,7 +94,7 @@ var BG = { cv: null, key: '', ox: 0, oy: 0, k: 1, m: 0 };
 function bgKey() { return [S.theme, S.lvl.space, roadTier(), washLanes(), S.deckAnim > .02 ? 1 : 0, shopTier(), Math.min(S.lvl.ev, builtCols()), townShown(), cv.width, cv.height].join(); }
 function inBg(p) { return p.y + p.d < RY - .45; }   // town plots north of the road never have anything moving behind them
 function bakeBg(key) {
-  var m = Math.round(Math.max(cv.width, cv.height) * .2), main = ctx, k = T.k, th = TH(), i;
+  var m = Math.round(Math.max(cv.width, cv.height) * .3), main = ctx, k = T.k, th = TH(), i;
   if (!BG.cv) BG.cv = document.createElement('canvas');
   if (BG.cv.width !== cv.width + 2 * m || BG.cv.height !== cv.height + 2 * m) { BG.cv.width = cv.width + 2 * m; BG.cv.height = cv.height + 2 * m; }
   ctx = BG.cv.getContext('2d'); SEAMS = true;
@@ -107,7 +107,8 @@ function bakeBg(key) {
   ZOFF = 0;
   drawGround();
   var L = [], n = townShown();
-  for (i = 0; i < n; i++) (function (p, i) { if (inBg(p) && onScreen(p.x, p.y)) L.push({ d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
+  for (i = 0; i < n; i++) if (TOWN[i].t === 'house' && inBg(TOWN[i]) && onScreen(TOWN[i].x, TOWN[i].y)) drawHouseGround(TOWN[i]);   // yards first, under everything
+  for (i = 0; i < n; i++) (function (p, i) { if (inBg(p) && onScreen(p.x, p.y)) L.push({ d: p.x + p.y + p.d + (p.kind === 'ell' ? .9 : 0), f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
   STREET_TREES.forEach(function (t) { if (onScreen(t[0], t[1])) L.push({ d: t[0] + t[1], f: function () { drawTreeKind(t[2] ? TH().tree2 : TH().tree, t[0], t[1], .75); } }); });
   S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) L.push({ d: s.x + s.y + 50, f: function () { drawChargerPost(s); } }); });
   L.sort(function (a, b) { return a.d - b.d; }); L.forEach(function (o) { o.f(); });
@@ -118,11 +119,11 @@ function drawBg(interacting) {
   var key = bgKey(), s = T.k / BG.k, m = BG.m;
   var dx = T.ox - (BG.ox + m) * s, dy = T.oy - (BG.oy + m) * s, dw = (BG.cv ? BG.cv.width : 0) * s, dh = (BG.cv ? BG.cv.height : 0) * s;
   var uncovered = dx > 0 || dy > 0 || dx + dw < cv.width || dy + dh < cv.height;
-  if (!BG.cv || key !== BG.key || Math.abs(s - 1) > (interacting ? .4 : .01) || (uncovered && !interacting)) {
+  // never leave a bare edge: if the copy would not fill the screen, redraw it now, mid-gesture or not
+  if (!BG.cv || key !== BG.key || uncovered || Math.abs(s - 1) > (interacting ? .4 : .01)) {
     bakeBg(key); s = 1; dx = T.ox - BG.ox - BG.m; dy = T.oy - BG.oy - BG.m; dw = BG.cv.width; dh = BG.cv.height; uncovered = false;
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (uncovered) { ctx.fillStyle = TH().bg[1]; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (s === 1) ctx.drawImage(BG.cv, Math.round(dx), Math.round(dy)); else ctx.drawImage(BG.cv, dx, dy, dw, dh);
 }
 function draw() {

@@ -20,18 +20,33 @@ function buildTown() {
   var PASTEL = th.wall || ['#ffd9b8', '#cfe8ff', '#ffe8a8', '#e0d4ff', '#ffc9d6', '#c9f2d9'], ROOF = ['#ff7a6b', '#5d7bd8', '#e0a63a', '#8b6bd0', '#d8566e'];
   var TOW = S.theme === 'neon' ? ['#5a4fa0', '#4a3f8a', '#6a4fa8', '#3f4a8a'] : ['#7fb5ff', '#ffb27a', '#b79bff', '#ff9ccf', '#6fd6c4', '#ffd04a'];
   var NEON = ['#ff4fd8', '#4ff0ff', '#ffe14f', '#7dff6a'];
-  function home(px, py, w, d, flip) {
-    var r = rnd(), p = { x: px, y: py, w: w, d: d, flip: flip };
-    if (r < .12) { p.t = 'park'; p.s = .9 + rnd() * .3; return p; }
-    if (th.home === 'house') { p.t = 'house'; p.h = 20 + rnd() * 10; p.c = PASTEL[Math.floor(rnd() * PASTEL.length)]; p.r = th.roof || ROOF[Math.floor(rnd() * 5)]; }
-    else { p.t = th.home; p.h = 36 + rnd() * 50; p.c = TOW[Math.floor(rnd() * TOW.length)]; p.n = NEON[Math.floor(rnd() * 4)]; }
+  // one plot: usually a house of some shape, sometimes a pocket park or a pair of trees
+  var KINDS = ['gable', 'gable', 'hip', 'flat', 'two', 'ell'], ROOFS = th.roof ? [th.roof] : ['#ff7a6b', '#5d7bd8', '#e0a63a', '#8b6bd0', '#d8566e', '#6d6a86', '#4fae8a'];
+  function home(px, py, w, d, facing) {
+    var r = rnd(), p = { x: px, y: py, w: w, d: d };
+    if (r < .1) { p.t = 'park'; p.s = .85 + rnd() * .35; return p; }
+    if (th.home !== 'house') { p.t = th.home; p.h = 36 + rnd() * 50; p.c = TOW[Math.floor(rnd() * TOW.length)]; p.n = NEON[Math.floor(rnd() * 4)]; return p; }
+    // a house a bit smaller than its plot, set back by a random amount, with its own look
+    var hw = w * (.62 + rnd() * .22), hd = d * (.58 + rnd() * .2);
+    p.t = 'house'; p.kind = KINDS[Math.floor(rnd() * KINDS.length)];
+    p.x = px + (w - hw) * (.2 + rnd() * .6); p.y = py + (d - hd) * (facing === 'S' ? .25 + rnd() * .3 : .5 + rnd() * .3); p.w = hw; p.d = hd;
+    if (p.kind === 'ell') { p.d = hd * .75; p.y = Math.min(p.y, py + d - p.d - .95); }   // room for the front wing
+    p.h = p.kind === 'two' ? 30 + rnd() * 6 : 17 + rnd() * 6;
+    p.c = PASTEL[Math.floor(rnd() * PASTEL.length)]; p.r = ROOFS[Math.floor(rnd() * ROOFS.length)];
+    p.face = facing === 'E' ? 'E' : 'S'; p.ridge = facing === 'E' || rnd() < .3 ? 'y' : 'x';
+    p.chimney = rnd() < .45; p.porch = rnd() < .45; p.garage = p.kind !== 'ell' && rnd() < .3 && p.x + p.w + .8 < px + w + .4;
+    p.lawn = .93 + rnd() * .08; p.drive = facing === 'S' ? (py + d) - (p.y + p.d) : 0;
+    if (rnd() < .4) p.tree = { x: px + (rnd() < .5 ? .25 : w - .25), y: py + .3 + rnd() * (d - .5), s: .55 + rnd() * .25 };
     return p;
   }
-  for (x = -16.6; x < 24; x += 2.3) { out.push(home(x, -9.8, 1.7, 1.5)); out.push(home(x, -6.1, 1.7, 1.4, true)); }
-  for (y = -4.6; y < 7.5; y += 2.3) { out.push(home(-15.4, y, 1.6, 1.6)); out.push(home(-11.5, y, 1.6, 1.6)); out.push(home(17.4, y, 1.6, 1.6)); out.push(home(21.2, y, 1.6, 1.6)); }
+  var pw;
+  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -10 + rnd() * .3, pw - .25, 1.9, 'S')); }
+  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -6.1, pw - .25, 1.7, 'N')); }
+  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(-15.6, y, 1.9, pw - .25, 'E')); out.push(home(-11.6, y, 1.8, pw - .25, 'W')); }
+  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(17.2, y, 1.8, pw - .25, 'W')); out.push(home(21.1, y, 1.9, pw - .25, 'E')); }
   for (x = -16; x < 25; x += 2.6) {   // across the main road, beyond the widest highway
     if (th.water) { out.push({ t: S.theme === 'harbor' ? 'box' : 'umbrella', x: x + .4, y: FRONT_Y + .3, n: 1 + Math.floor(rnd() * 3), c: ['#ff7a6b', '#5db8ff', '#ffd04a', '#ff9ccf'][Math.floor(rnd() * 4)], cs: ['#ff7a6b', '#3d8bff', '#ffd04a', '#5fd6a4'] }); continue; }
-    out.push(home(x, FRONT_Y, 1.7, 1.4, true));
+    out.push(home(x, FRONT_Y, 2.3, 1.6, 'N'));
   }
   for (y = -13.6; y > -22; y -= 3.5) for (x = -17; x < 26; x += 3.1) {   // the skyline at the back
     if (rnd() < .25) continue;
@@ -54,7 +69,7 @@ function levelSum() { var n = 0, k; for (k in S.lvl) n += Math.min(30, S.lvl[k])
 function townShown() { return Math.min(TOWN.length, 14 + Math.floor(levelSum() * 1.1)); }
 function drawPlot(p) {
   switch (p.t) {
-    case 'house': drawHouse(p); break;
+    case 'house': if (!inBg(p)) drawHouseGround(p); drawHouse(p); if (p.tree) drawTreeKind(TH().tree, p.tree.x, p.tree.y, p.tree.s); break;
     case 'park': var th = TH(); drawTreeKind(th.tree, p.x + .45, p.y + .5, p.s); drawTreeKind(th.tree2, p.x + 1.2, p.y + 1, p.s * .85); break;
     case 'umbrella': drawUmbrella(p.x, p.y, p.c); break;
     case 'box': drawContainers(p); break;

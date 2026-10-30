@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.1';
+var VERSION = '1.1.3';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -504,14 +504,91 @@ function drawTree(x, y, s) {
   cone(x, y, .4 * s, 26 * s, 50 * s, '#6bdb8c', 6);
 }
 function drawBush(x, y) { cone(x, y, .32, 0, 12, '#4dc476', 6); }
+/* ---------- houses: real roofs and a few shapes ----------
+   d: x, y, w, d (footprint), h (wall height), c (walls), r (roof), kind (gable | hip | flat | two | ell),
+   ridge ('x' or 'y'), face ('S' or 'E': which visible side has the front door), plus chimney, porch, garage. */
+var RO = .12;   // roof overhang
+// gable roof with the ridge along x: back slope, the gable wall on the east end, front slope, trim
+function roofGableX(x0, y0, x1, y1, h, rh, r, c) {
+  var ym = (y0 + y1) / 2, t = h + rh;
+  poly([P(x0 - RO, y0 - RO, h), P(x1 + RO, y0 - RO, h), P(x1 + RO, ym, t), P(x0 - RO, ym, t)], shade(r, .78));
+  poly([P(x1, y0, h), P(x1, y1, h), P(x1, ym, t)], shade(c, FR));
+  poly([P(x0 - RO, y1 + RO, h), P(x1 + RO, y1 + RO, h), P(x1 + RO, ym, t), P(x0 - RO, ym, t)], shade(r, 1.02));
+  line(P(x1 + RO, y1 + RO, h), P(x1 + RO, ym, t), 1.6, shade(r, .62)); line(P(x1 + RO, ym, t), P(x1 + RO, y0 - RO, h), 1.6, shade(r, .62));
+}
+// gable roof with the ridge along y: the gable wall faces the front (south)
+function roofGableY(x0, y0, x1, y1, h, rh, r, c) {
+  var xm = (x0 + x1) / 2, t = h + rh;
+  poly([P(x0 - RO, y0 - RO, h), P(x0 - RO, y1 + RO, h), P(xm, y1 + RO, t), P(xm, y0 - RO, t)], shade(r, .86));
+  poly([P(x0, y1, h), P(x1, y1, h), P(xm, y1, t)], shade(c, FL));
+  poly([P(x1 + RO, y0 - RO, h), P(x1 + RO, y1 + RO, h), P(xm, y1 + RO, t), P(xm, y0 - RO, t)], shade(r, .74));
+  line(P(x0 - RO, y1 + RO, h), P(xm, y1 + RO, t), 1.6, shade(r, .62)); line(P(xm, y1 + RO, t), P(x1 + RO, y1 + RO, h), 1.6, shade(r, .62));
+}
+// hip roof: four slopes up to a short ridge
+function roofHip(x0, y0, x1, y1, h, rh, r) {
+  var alongX = x1 - x0 >= y1 - y0, t = h + rh, a = x0 - RO, b = x1 + RO, c0 = y0 - RO, c1 = y1 + RO;
+  if (alongX) {
+    var ym = (y0 + y1) / 2, ri = (y1 - y0) / 2;
+    poly([P(a, c0, h), P(b, c0, h), P(x1 - ri, ym, t), P(x0 + ri, ym, t)], shade(r, .78));
+    poly([P(a, c0, h), P(x0 + ri, ym, t), P(a, c1, h)], shade(r, .86));
+    poly([P(b, c0, h), P(b, c1, h), P(x1 - ri, ym, t)], shade(r, .74));
+    poly([P(a, c1, h), P(b, c1, h), P(x1 - ri, ym, t), P(x0 + ri, ym, t)], shade(r, 1.02));
+  } else {
+    var xm = (x0 + x1) / 2, rj = (x1 - x0) / 2;
+    poly([P(a, c0, h), P(xm, y0 + rj, t), P(xm, y1 - rj, t), P(a, c1, h)], shade(r, .86));
+    poly([P(a, c0, h), P(b, c0, h), P(xm, y0 + rj, t)], shade(r, .78));
+    poly([P(b, c0, h), P(b, c1, h), P(xm, y1 - rj, t), P(xm, y0 + rj, t)], shade(r, .74));
+    poly([P(a, c1, h), P(b, c1, h), P(xm, y1 - rj, t)], shade(r, 1.02));
+  }
+}
+function roofFlat(x0, y0, x1, y1, h, r) {
+  prism(x0 - .04, y0 - .04, h, x1 + .04, y1 + .04, h + 3, shade(r, 1.05));
+  poly([P(x0 + .12, y0 + .12, h + 3), P(x1 - .12, y0 + .12, h + 3), P(x1 - .12, y1 - .12, h + 3), P(x0 + .12, y1 - .12, h + 3)], shade(r, .82), null, 0);
+}
+function houseBox(x0, y0, x1, y1, h, c, face, rows, door) {
+  prism(x0, y0, 0, x1, y1, h, c);
+  var w = x1 - x0, d = y1 - y0, glass = '#9ad4ff';
+  winL(x0 + .12, x1 - .12, y1, h * .18, h * .9, Math.max(1, Math.round(w * 1.4)), rows, glass);
+  winR(x1, y0 + .12, y1 - .12, h * .18, h * .9, Math.max(1, Math.round(d * 1.2)), rows, glass);
+  if (!door) return;
+  if (face === 'E') { var dy = y0 + d * .55; poly([P(x1 + .005, dy - .12, 0), P(x1 + .005, dy + .12, 0), P(x1 + .005, dy + .12, 14), P(x1 + .005, dy - .12, 14)], '#7a5a9a', null, 0); }
+  else { var dx = x0 + w * .5; poly([P(dx - .12, y1 + .005, 0), P(dx + .12, y1 + .005, 0), P(dx + .12, y1 + .005, 14), P(dx - .12, y1 + .005, 14)], '#7a5a9a', null, 0); }
+}
+// yard, driveway and hedges, drawn under the house
+function drawHouseGround(d) {
+  var g = TH().ground[2], x0 = d.x - .15, y0 = d.y - .15, x1 = d.x + d.w + .15, y1 = d.y + d.d + .15;
+  poly([P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)], shade(g, d.lawn || .96));
+  if (d.drive) { var dx = d.x + d.w * (d.face === 'E' ? .5 : .78); poly([P(dx - .2, d.y + d.d), P(dx + .2, d.y + d.d), P(dx + .2, y1 + d.drive), P(dx - .2, y1 + d.drive)], '#e2ddd0'); }
+}
 function drawHouse(d) {
-  var x0 = d.x, x1 = d.x + d.w, y0 = d.y, y1 = d.y + d.d, h = d.h, ym = (y0 + y1) / 2, zr = h + d.h * .55;
-  prism(x0, y0, 0, x1, y1, h, d.c);
-  poly([P(x0 - .08, y1 + .08, h), P(x1 + .08, y1 + .08, h), P(x1 + .08, ym, zr), P(x0 - .08, ym, zr)], shade(d.r, FT));
-  poly([P(x1, y1, h), P(x1, y0, h), P(x1, ym, zr)], shade(d.c, FR));
-  poly([P(x1 + .08, y1 + .08, h), P(x1 + .08, ym, zr), P(x1 + .08, y0 - .08, h)], shade(d.r, FR));
-  winL(x0 + .15, x1 - .15, y1, h * .3, h * .85, 2, 1, '#9ad4ff');
-  poly([P(x0 + d.w * .42, y1, h * .6), P(x0 + d.w * .58, y1, h * .6), P(x0 + d.w * .58, y1, 0), P(x0 + d.w * .42, y1, 0)], '#7a5a9a', null, 0);
+  var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, h = d.h, r = d.r, c = d.c;
+  if (d.garage) {   // attached single garage on the east side, lower flat roof
+    var gx0 = x1, gx1 = x1 + .75, gy0 = y1 - .85;
+    prism(gx0, gy0, 0, gx1, y1, 14, shade(c, .97));
+    poly([P(gx0 + .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 11), P(gx0 + .1, y1 + .005, 11)], '#e9edf7', null, 0);
+    for (var k = 1; k < 4; k++) line(P(gx0 + .1, y1 + .006, k * 2.8), P(gx1 - .1, y1 + .006, k * 2.8), 1, 'rgba(120,120,150,.5)', 'butt');
+    roofFlat(gx0, gy0, gx1, y1, 14, r);
+  }
+  if (d.kind === 'ell') {   // a wing sticking out to the front on the west side
+    var wx1 = x0 + d.w * .48, wy1 = y1 + .9;
+    houseBox(x0, y0, x1, y1, h, c, d.face, 1, false);
+    roofGableX(x0, y0, x1, y1, h, d.d * 11, r, c);
+    houseBox(x0, y1, wx1, wy1, h, shade(c, 1.02), 'S', 1, true);
+    roofGableY(x0, y1 - .2, wx1, wy1, h, (wx1 - x0) * 11, r, c);
+  } else {
+    var rows = d.kind === 'two' ? 2 : 1;
+    houseBox(x0, y0, x1, y1, h, c, d.face, rows, true);
+    if (d.kind === 'flat') roofFlat(x0, y0, x1, y1, h, r);
+    else if (d.kind === 'hip') roofHip(x0, y0, x1, y1, h, Math.min(d.w, d.d) * 9, r);
+    else if (d.ridge === 'y') roofGableY(x0, y0, x1, y1, h, d.w * 11, r, c);
+    else roofGableX(x0, y0, x1, y1, h, d.d * 11, r, c);
+  }
+  if (d.chimney && d.kind !== 'flat') prism(x0 + d.w * .22, y0 + d.d * .3, h, x0 + d.w * .22 + .2, y0 + d.d * .3 + .2, h + (d.kind === 'hip' ? 16 : d.d * 11 + 4), shade(c, .8));
+  if (d.porch && d.face !== 'E' && d.kind !== 'ell') {   // a little roof on posts over the front door
+    var px = x0 + d.w * .5;
+    prism(px - .3, y1 + .3, 0, px - .26, y1 + .34, 12, '#f4f1ea'); prism(px + .26, y1 + .3, 0, px + .3, y1 + .34, 12, '#f4f1ea');
+    prism(px - .38, y1, 12, px + .38, y1 + .4, 14, shade(r, .9));
+  }
 }
 function drawTower(d) {
   var x0 = d.x, x1 = d.x + d.w, y0 = d.y, y1 = d.y + d.d, h = d.h;
@@ -1348,18 +1425,33 @@ function buildTown() {
   var PASTEL = th.wall || ['#ffd9b8', '#cfe8ff', '#ffe8a8', '#e0d4ff', '#ffc9d6', '#c9f2d9'], ROOF = ['#ff7a6b', '#5d7bd8', '#e0a63a', '#8b6bd0', '#d8566e'];
   var TOW = S.theme === 'neon' ? ['#5a4fa0', '#4a3f8a', '#6a4fa8', '#3f4a8a'] : ['#7fb5ff', '#ffb27a', '#b79bff', '#ff9ccf', '#6fd6c4', '#ffd04a'];
   var NEON = ['#ff4fd8', '#4ff0ff', '#ffe14f', '#7dff6a'];
-  function home(px, py, w, d, flip) {
-    var r = rnd(), p = { x: px, y: py, w: w, d: d, flip: flip };
-    if (r < .12) { p.t = 'park'; p.s = .9 + rnd() * .3; return p; }
-    if (th.home === 'house') { p.t = 'house'; p.h = 20 + rnd() * 10; p.c = PASTEL[Math.floor(rnd() * PASTEL.length)]; p.r = th.roof || ROOF[Math.floor(rnd() * 5)]; }
-    else { p.t = th.home; p.h = 36 + rnd() * 50; p.c = TOW[Math.floor(rnd() * TOW.length)]; p.n = NEON[Math.floor(rnd() * 4)]; }
+  // one plot: usually a house of some shape, sometimes a pocket park or a pair of trees
+  var KINDS = ['gable', 'gable', 'hip', 'flat', 'two', 'ell'], ROOFS = th.roof ? [th.roof] : ['#ff7a6b', '#5d7bd8', '#e0a63a', '#8b6bd0', '#d8566e', '#6d6a86', '#4fae8a'];
+  function home(px, py, w, d, facing) {
+    var r = rnd(), p = { x: px, y: py, w: w, d: d };
+    if (r < .1) { p.t = 'park'; p.s = .85 + rnd() * .35; return p; }
+    if (th.home !== 'house') { p.t = th.home; p.h = 36 + rnd() * 50; p.c = TOW[Math.floor(rnd() * TOW.length)]; p.n = NEON[Math.floor(rnd() * 4)]; return p; }
+    // a house a bit smaller than its plot, set back by a random amount, with its own look
+    var hw = w * (.62 + rnd() * .22), hd = d * (.58 + rnd() * .2);
+    p.t = 'house'; p.kind = KINDS[Math.floor(rnd() * KINDS.length)];
+    p.x = px + (w - hw) * (.2 + rnd() * .6); p.y = py + (d - hd) * (facing === 'S' ? .25 + rnd() * .3 : .5 + rnd() * .3); p.w = hw; p.d = hd;
+    if (p.kind === 'ell') { p.d = hd * .75; p.y = Math.min(p.y, py + d - p.d - .95); }   // room for the front wing
+    p.h = p.kind === 'two' ? 30 + rnd() * 6 : 17 + rnd() * 6;
+    p.c = PASTEL[Math.floor(rnd() * PASTEL.length)]; p.r = ROOFS[Math.floor(rnd() * ROOFS.length)];
+    p.face = facing === 'E' ? 'E' : 'S'; p.ridge = facing === 'E' || rnd() < .3 ? 'y' : 'x';
+    p.chimney = rnd() < .45; p.porch = rnd() < .45; p.garage = p.kind !== 'ell' && rnd() < .3 && p.x + p.w + .8 < px + w + .4;
+    p.lawn = .93 + rnd() * .08; p.drive = facing === 'S' ? (py + d) - (p.y + p.d) : 0;
+    if (rnd() < .4) p.tree = { x: px + (rnd() < .5 ? .25 : w - .25), y: py + .3 + rnd() * (d - .5), s: .55 + rnd() * .25 };
     return p;
   }
-  for (x = -16.6; x < 24; x += 2.3) { out.push(home(x, -9.8, 1.7, 1.5)); out.push(home(x, -6.1, 1.7, 1.4, true)); }
-  for (y = -4.6; y < 7.5; y += 2.3) { out.push(home(-15.4, y, 1.6, 1.6)); out.push(home(-11.5, y, 1.6, 1.6)); out.push(home(17.4, y, 1.6, 1.6)); out.push(home(21.2, y, 1.6, 1.6)); }
+  var pw;
+  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -10 + rnd() * .3, pw - .25, 1.9, 'S')); }
+  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -6.1, pw - .25, 1.7, 'N')); }
+  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(-15.6, y, 1.9, pw - .25, 'E')); out.push(home(-11.6, y, 1.8, pw - .25, 'W')); }
+  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(17.2, y, 1.8, pw - .25, 'W')); out.push(home(21.1, y, 1.9, pw - .25, 'E')); }
   for (x = -16; x < 25; x += 2.6) {   // across the main road, beyond the widest highway
     if (th.water) { out.push({ t: S.theme === 'harbor' ? 'box' : 'umbrella', x: x + .4, y: FRONT_Y + .3, n: 1 + Math.floor(rnd() * 3), c: ['#ff7a6b', '#5db8ff', '#ffd04a', '#ff9ccf'][Math.floor(rnd() * 4)], cs: ['#ff7a6b', '#3d8bff', '#ffd04a', '#5fd6a4'] }); continue; }
-    out.push(home(x, FRONT_Y, 1.7, 1.4, true));
+    out.push(home(x, FRONT_Y, 2.3, 1.6, 'N'));
   }
   for (y = -13.6; y > -22; y -= 3.5) for (x = -17; x < 26; x += 3.1) {   // the skyline at the back
     if (rnd() < .25) continue;
@@ -1382,7 +1474,7 @@ function levelSum() { var n = 0, k; for (k in S.lvl) n += Math.min(30, S.lvl[k])
 function townShown() { return Math.min(TOWN.length, 14 + Math.floor(levelSum() * 1.1)); }
 function drawPlot(p) {
   switch (p.t) {
-    case 'house': drawHouse(p); break;
+    case 'house': if (!inBg(p)) drawHouseGround(p); drawHouse(p); if (p.tree) drawTreeKind(TH().tree, p.tree.x, p.tree.y, p.tree.s); break;
     case 'park': var th = TH(); drawTreeKind(th.tree, p.x + .45, p.y + .5, p.s); drawTreeKind(th.tree2, p.x + 1.2, p.y + 1, p.s * .85); break;
     case 'umbrella': drawUmbrella(p.x, p.y, p.c); break;
     case 'box': drawContainers(p); break;
@@ -1655,7 +1747,7 @@ var BG = { cv: null, key: '', ox: 0, oy: 0, k: 1, m: 0 };
 function bgKey() { return [S.theme, S.lvl.space, roadTier(), washLanes(), S.deckAnim > .02 ? 1 : 0, shopTier(), Math.min(S.lvl.ev, builtCols()), townShown(), cv.width, cv.height].join(); }
 function inBg(p) { return p.y + p.d < RY - .45; }   // town plots north of the road never have anything moving behind them
 function bakeBg(key) {
-  var m = Math.round(Math.max(cv.width, cv.height) * .2), main = ctx, k = T.k, th = TH(), i;
+  var m = Math.round(Math.max(cv.width, cv.height) * .3), main = ctx, k = T.k, th = TH(), i;
   if (!BG.cv) BG.cv = document.createElement('canvas');
   if (BG.cv.width !== cv.width + 2 * m || BG.cv.height !== cv.height + 2 * m) { BG.cv.width = cv.width + 2 * m; BG.cv.height = cv.height + 2 * m; }
   ctx = BG.cv.getContext('2d'); SEAMS = true;
@@ -1668,7 +1760,8 @@ function bakeBg(key) {
   ZOFF = 0;
   drawGround();
   var L = [], n = townShown();
-  for (i = 0; i < n; i++) (function (p, i) { if (inBg(p) && onScreen(p.x, p.y)) L.push({ d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
+  for (i = 0; i < n; i++) if (TOWN[i].t === 'house' && inBg(TOWN[i]) && onScreen(TOWN[i].x, TOWN[i].y)) drawHouseGround(TOWN[i]);   // yards first, under everything
+  for (i = 0; i < n; i++) (function (p, i) { if (inBg(p) && onScreen(p.x, p.y)) L.push({ d: p.x + p.y + p.d + (p.kind === 'ell' ? .9 : 0), f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
   STREET_TREES.forEach(function (t) { if (onScreen(t[0], t[1])) L.push({ d: t[0] + t[1], f: function () { drawTreeKind(t[2] ? TH().tree2 : TH().tree, t[0], t[1], .75); } }); });
   S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) L.push({ d: s.x + s.y + 50, f: function () { drawChargerPost(s); } }); });
   L.sort(function (a, b) { return a.d - b.d; }); L.forEach(function (o) { o.f(); });
@@ -1679,11 +1772,11 @@ function drawBg(interacting) {
   var key = bgKey(), s = T.k / BG.k, m = BG.m;
   var dx = T.ox - (BG.ox + m) * s, dy = T.oy - (BG.oy + m) * s, dw = (BG.cv ? BG.cv.width : 0) * s, dh = (BG.cv ? BG.cv.height : 0) * s;
   var uncovered = dx > 0 || dy > 0 || dx + dw < cv.width || dy + dh < cv.height;
-  if (!BG.cv || key !== BG.key || Math.abs(s - 1) > (interacting ? .4 : .01) || (uncovered && !interacting)) {
+  // never leave a bare edge: if the copy would not fill the screen, redraw it now, mid-gesture or not
+  if (!BG.cv || key !== BG.key || uncovered || Math.abs(s - 1) > (interacting ? .4 : .01)) {
     bakeBg(key); s = 1; dx = T.ox - BG.ox - BG.m; dy = T.oy - BG.oy - BG.m; dw = BG.cv.width; dh = BG.cv.height; uncovered = false;
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (uncovered) { ctx.fillStyle = TH().bg[1]; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (s === 1) ctx.drawImage(BG.cv, Math.round(dx), Math.round(dy)); else ctx.drawImage(BG.cv, dx, dy, dw, dh);
 }
 function draw() {
