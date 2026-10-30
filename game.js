@@ -588,6 +588,7 @@ function drawMarket() {
   var lit = {}, doors = shopDoors();
   S.walkers.forEach(function (w) { if (w.state === 'inside') lit[w.door] = true; });
   poly([P(x0 - .4, y1), P(x1 + .4, y1), P(x1 + .4, y1 + .7), P(x0 - .4, y1 + .7)], 'rgba(40,30,80,.12)', null, 0);
+  if (t >= 3) { drawMall(t, x0, x1, y0, y1, lit, doors); return; }
   if (t === 4) {   // the mega mall's tower behind
     var tx0 = (x0 + x1) / 2 - .4, tx1 = tx0 + 2.6;
     prism(tx0, y0 - .2, 0, tx1, y0 + 1.6, 168, '#7fb5ff');
@@ -631,6 +632,39 @@ function drawMarket() {
   }
   if (t >= 2) for (i = 0; i < 3; i++) prism(x0 + 1 + i * 2.5, y0 + .5, h + 5, x0 + 1.7 + i * 2.5, y0 + 1.1, h + 11, '#c9cfdd');   // rooftop units
   if (t >= 1) { drawPlanter(x0 - .2, y1 + .45); drawPlanter(x1 + .2, y1 + .45); }
+}
+// the mall: one clean block with a glass shopfront, store signs above it and a canopy over the main entrance.
+// The mega mall is taller, adds a second glass floor and a glass dome on the roof.
+function drawMall(t, x0, x1, y0, y1, lit, doors) {
+  var mega = t === 4, h = mega ? 62 : 44, body = mega ? '#eef2ff' : '#f6f0ff', trim = mega ? '#3d8bff' : '#8b6bd0', i;
+  var ax = doors[doors.length - 1], w = x1 - x0;
+  prism(x0, y0, 0, x1, y1, h, body);
+  prism(x0 - .06, y0 - .06, h, x1 + .06, y1 + .06, h + 4, trim);
+  // ground floor shopfront: one glass band with mullions
+  poly([P(x0 + .15, y1 + .01, 4), P(x1 - .15, y1 + .01, 4), P(x1 - .15, y1 + .01, 22), P(x0 + .15, y1 + .01, 22)], '#a9dcf7', null, 0);
+  for (i = 1; i < w * 2; i++) line(P(x0 + .15 + i * .5, y1 + .012, 4), P(x0 + .15 + i * .5, y1 + .012, 22), 1.2, 'rgba(255,255,255,.7)', 'butt');
+  doors.forEach(function (dx, j) {
+    if (j === doors.length - 1) return;
+    poly([P(dx - .28, y1 + .015, 4), P(dx + .28, y1 + .015, 4), P(dx + .28, y1 + .015, 17), P(dx - .28, y1 + .015, 17)], lit[dx] ? '#ffe28a' : '#6e7fb0', null, 0);
+    poly([P(dx - .42, y1 + .015, 25), P(dx + .42, y1 + .015, 25), P(dx + .42, y1 + .015, 31), P(dx - .42, y1 + .015, 31)], AWN[j % 6], null, 0);   // store sign
+  });
+  if (mega) {   // second floor glass and a sign band
+    poly([P(x0 + .15, y1 + .01, 36), P(x1 - .15, y1 + .01, 36), P(x1 - .15, y1 + .01, 54), P(x0 + .15, y1 + .01, 54)], '#bfe6ff', null, 0);
+    for (i = 1; i < w * 2; i++) line(P(x0 + .15 + i * .5, y1 + .012, 36), P(x0 + .15 + i * .5, y1 + .012, 54), 1.2, 'rgba(255,255,255,.7)', 'butt');
+  }
+  winR(x1, y0 + .2, y1 - .2, 6, h - 8, 3, mega ? 2 : 1, '#bfe6ff');
+  // main entrance: a canopy on two posts over glass doors, the name above
+  poly([P(ax - .7, y1 + .02, 0), P(ax + .7, y1 + .02, 0), P(ax + .7, y1 + .02, 20), P(ax - .7, y1 + .02, 20)], lit[ax] ? '#ffe28a' : '#5a7fa8', null, 0);
+  prism(ax - .95, y1 + .55, 0, ax - .85, y1 + .65, 22, '#e9edf7'); prism(ax + .85, y1 + .55, 0, ax + .95, y1 + .65, 22, '#e9edf7');
+  prism(ax - 1.05, y1, 22, ax + 1.05, y1 + .7, 25, trim);
+  faceText(mega ? 'MEGA MALL' : 'MALL', P(ax, y1 + .02, mega ? 45 : 35), 'L', mega ? 10 : 12, trim);
+  // roof: skylights, units, and the mega mall's glass dome
+  ZOFF = h + 4;
+  for (i = 0; i < 3; i++) prism(x0 + .8 + i * (w / 3), y0 + .5, 0, x0 + 1.5 + i * (w / 3), y0 + 1.1, 6, '#c9cfdd');
+  if (mega) { frustum(ax, (y0 + y1) / 2, 2.2, 1.4, 1.2, .7, 0, 14, 0, 0, '#cfeeff', shade('#8fd0f5', FL), shade('#8fd0f5', FR)); prism(ax - .1, (y0 + y1) / 2 - .1, 14, ax + .1, (y0 + y1) / 2 + .1, 22, '#e9edf7'); }
+  else quadA(ax - 1, y0 + .4, ax + 1, y1 - .4, '#cfeeff');
+  ZOFF = 0;
+  drawPlanter(x0 - .2, y1 + .45); drawPlanter(x1 + .2, y1 + .45);
 }
 function drawPlanter(x, y) {
   prism(x - .18, y - .14, 0, x + .18, y + .14, 6, '#c98a5a');
