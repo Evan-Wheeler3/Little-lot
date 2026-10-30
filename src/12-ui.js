@@ -79,6 +79,26 @@ Object.keys(ITEMS).forEach(function (k) {
   it.max = function () { return k === 'garage' ? maxDecks() : k === 'ev' ? Math.min(MAXL.ev, builtCols()) : MAXL[k]; };
   it.apply = function () { S.lvl[k]++; if (k === 'garage') ensureSlots(); };
 });
+// the green number next to each stat: what buying adds. val() is the stat as a number; up(a, b) turns old and new into "+2 bays" or "+15%".
+function upAdd(unit, f) { return function (a, b) { return '+' + (f ? f(b - a) : fmtSmall(b - a)) + unit; }; }
+function upPct(a, b) { return a > 0 ? '+' + Math.max(1, Math.round((b / a - 1) * 100)) + '%' : 'Opens'; }
+function upLess(a, b) { return '-' + (a - b).toFixed(a - b < .1 ? 2 : 1) + 's'; }
+function upHire(f) { return function (a, b) { return a ? f(a, b) : 'Hire'; }; }
+var UPS = {
+  space: [function () { return activeSpots().length; }, upAdd(' bays')],
+  garage: [function () { return garCap(); }, upAdd(' bays')],
+  wash: [function () { return S.lvl.wash ? washPrice() / rushFee() : 0; }, function (a, b) { return a ? upPct(a, b) : 'Opens'; }],
+  shop: [function () { return fee() / rushFee() * tipRate(); }, function (a, b) { return a ? upPct(a, b) : '+$' + fmtSmall(b) + ' tips'; }],
+  gate: [speedMul, upPct], walk: [walkSpeed, upPct], express: [visitAvg, upLess], valet: [doorTime, upLess],
+  fee: [function () { return fee(); }, upPct], ads: [demand, upPct], rep: [function () { return repMul(); }, upPct],
+  ev: [function () { return Math.min(S.lvl.ev, builtCols()) * 2; }, upAdd(' bays')],
+  concierge: [function () { return S.lvl.concierge ? vipMul() : 0; }, upHire(upPct)],
+  promoter: [function () { return S.lvl.promoter ? rushLen() : 0; }, upHire(upAdd('s'))],
+  crew: [function () { return 1 / drainRate(); }, upAdd('s', function (d) { return Math.round(d); })],
+  manager: [function () { return awayRate() * 100; }, upAdd('%', function (d) { return Math.round(d); })]
+};
+function valAt(k, l) { var o = S.lvl[k]; S.lvl[k] = l; var r = UPS[k][0](); S.lvl[k] = o; return r; }
+function upText(k, n) { var l = S.lvl[k]; return UPS[k][1](valAt(k, l), valAt(k, l + n)); }
 // what the card would say at another level
 function showAt(k, l) { var o = S.lvl[k]; S.lvl[k] = l; if (k === 'garage') ensureSlots(); var r = ITEMS[k].show(); S.lvl[k] = o; return r; }
 // the next landmark on a line: a new row, building, road, lane, class of car or milestone doubling
@@ -137,15 +157,13 @@ function btnHtml(k) {
   if (p.maxed) return k === 'garage' ? 'Franchise for more' : k === 'ev' && S.lvl.ev < MAXL.ev ? 'Build more bays' : 'Maxed';
   return '<span class="c">$</span>' + fmt(p.cost) + (p.n > 1 ? ' <small>x' + p.n + '</small>' : '');
 }
-function nowNext(now, next) {
-  return '<div class="nn"><span class="n0"><small>Now</small>' + now + '</span>' + (next ? '<span class="ar" aria-hidden="true">&rarr;</span><span class="n1"><small>Next</small>' + next + '</span>' : '') + '</div>';
-}
+function statLine(now, up) { return '<p class="stat">' + now + (up ? ' <b class="up">' + up + '</b>' : '') + '</p>'; }
 function cardHtml(k) {
   var it = ITEMS[k], l = it.lvl(), mx = it.max(), p = plan(k, S.qty), maxed = l >= mx;
   var lm = landmark(k, l);
   return '<article class="card up" id="card-' + k + '"><h3><span class="ico" style="background:' + it.tint + '">' + ICON[it.icon] + '</span>' + it.name + '<span class="lv">Lv ' + l + '</span></h3>' +
     '<p class="what">' + it.what + '</p>' +
-    '<div class="nnw" id="nn-' + k + '">' + nowNext(it.show(), maxed ? '' : showAt(k, l + Math.max(1, p.n || 1))) + '</div>' +
+    '<div class="nnw" id="nn-' + k + '">' + statLine(it.show(), maxed ? '' : upText(k, Math.max(1, p.n || 1))) + '</div>' +
     (lm ? '<p class="lm">' + lm + '</p>' : '') +
     '<button class="buy" type="button" data-up="' + k + '" id="buy-' + k + '">' + btnHtml(k) + '</button></article>';
 }
@@ -159,7 +177,7 @@ function goalHtml(k) {
 function perkHtml(k) {
   var d = PDEF[k], c = d.cost(S.perk[k]), maxed = S.perk[k] >= PMAX[k];
   return '<article class="card up" id="perk-' + k + '"><h3><span class="ico" style="background:' + d.tint + '">' + ICON[d.icon] + '</span>' + d.name + '<span class="lv">Lv ' + S.perk[k] + (isFinite(PMAX[k]) ? '/' + PMAX[k] : '') + '</span></h3>' +
-    '<div class="nnw">' + nowNext(d.now(), maxed ? '' : d.next()) + '</div>' +
+    '<div class="nnw">' + statLine(d.now(), maxed ? '' : d.up) + '</div>' +
     '<button class="buy" type="button" data-perk="' + k + '"' + (!maxed && S.tok >= c ? '' : ' disabled') + '>' + (maxed ? 'Maxed' : c + ' <i class="tk"></i>') + '</button></article>';
 }
 function frHtml() {
@@ -205,7 +223,7 @@ function refreshTray() {
     var html = btnHtml(k); if (b.innerHTML !== html) b.innerHTML = html;
     if (S.qty !== 1 && b.dataset.n !== String(p.n)) {   // buying several: show where that many levels gets you
       b.dataset.n = p.n; var nn = document.getElementById('nn-' + k), it = ITEMS[k];
-      if (nn && !p.maxed) nn.innerHTML = nowNext(it.show(), showAt(k, it.lvl() + Math.max(1, p.n)));
+      if (nn && !p.maxed) nn.innerHTML = statLine(it.show(), upText(k, Math.max(1, p.n)));
     }
   });
   var frReady = starsGain() > 0, gr = goalsReady();

@@ -424,3 +424,8 @@ a.buy { text-decoration: none; }
 .fade.bot { bottom: 0; height: 170px; background: linear-gradient(transparent, var(--bg1)); opacity: .8; }
 .hglow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
   background: radial-gradient(ellipse at center, rgba(255,140,190,0) 45%, rgba(255,140,190,.32) 100%); }
+
+/* upgrade stat with what buying adds, in green */
+.card .stat { margin: 0; font: 700 14px/1.25 var(--font-display); color: var(--ink); }
+.card .stat .up { font: 700 14px/1 var(--font-display); color: #1f9a58; background: #e3f8e6; border-radius: 7px; padding: 2px 6px; white-space: nowrap; }
+.card .nnw { align-self: center; }
