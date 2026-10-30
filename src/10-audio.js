@@ -9,7 +9,7 @@ function audioUnlock() {
   musBus = AC.createGain(); musBus.gain.value = SET.music ? .5 : 0; musBus.connect(comp);
   startMusic();
 }
-function setMusic(on) { if (musBus) musBus.gain.setTargetAtTime(on ? .5 : 0, AC.currentTime, .3); }
+function setMusic(on) { if (!musBus) return; if (on && AC.state === 'suspended') AC.resume(); musBus.gain.setTargetAtTime(on ? .5 : 0, AC.currentTime, .3); audioNap(); }
 function tone(f, t0, dur, type, vol, f2, bus) {
   var o = AC.createOscillator(), g = AC.createGain();
   o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0);
@@ -18,8 +18,17 @@ function tone(f, t0, dur, type, vol, f2, bus) {
   o.connect(g); g.connect(bus || sfxBus); o.start(t0); o.stop(t0 + dur + .05);
 }
 var GAP = { coin: .07, tap: .03, vip: .3, buy: .05 };
+// with the music off, the audio engine sleeps between sound effects instead of running all the time
+var sleepT = 0;
+function audioNap() {
+  clearTimeout(sleepT);
+  if (AC && !SET.music) sleepT = setTimeout(function () { if (AC && !SET.music && AC.state === 'running') AC.suspend(); }, 3000);
+}
 function sfx(k, x) {
-  if (!AC || !SET.sfx || document.hidden || AC.state !== 'running') return;
+  if (!AC || !SET.sfx || document.hidden) return;
+  if (AC.state === 'suspended' && !SET.music) { AC.resume(); audioNap(); return; }   // wakes up for the next sound
+  if (AC.state !== 'running') return;
+  audioNap();
   var n = AC.currentTime;
   if (GAP[k] && n - (lastSfx[k] || 0) < GAP[k]) return;
   lastSfx[k] = n;
@@ -57,7 +66,7 @@ function startMusic() {
 }
 document.addEventListener('visibilitychange', function () {
   if (!AC) return;
-  if (document.hidden) AC.suspend(); else { AC.resume(); musT = AC.currentTime + .1; }
+  if (document.hidden) AC.suspend(); else if (SET.music) { AC.resume(); musT = AC.currentTime + .1; }
 });
 
 /* ---------- the native app shell (Capacitor) when there is one ---------- */

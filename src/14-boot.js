@@ -4,13 +4,19 @@ var elMoney = $id('money'), elParked = $id('parked'), pill = $id('moneyPill'), e
 var elStars = $id('stars'), starPill = $id('starPill'), elGems = $id('gems'), boostChip = $id('boostChip'), boostT = $id('boostT');
 var hypeEl = $id('hype'), hypeFill = $id('hypeFill'), hypeTxt = $id('hypeTxt'), recenterBtn = $id('recenter');
 var dailyDot = $id('dailyDot'), shopDot = $id('shopDot'), rushBtn = $id('rushBtn');
+var hglow = $id('hglow'), fades = $id('stage'), lastHudT = 0, lastTrayT = 0, lastGlow = -1, lastTheme = null;
 var lastMoney = -1, lastParked = '', lastRate = '', lastFr = 0, lastGoalChk = 0, lastGoals = 0, lastGems = -1, lastHype = '';
 function hud() {
-  if (moneyChanged || S.money !== lastMoney) {
-    moneyChanged = false;
+  var tnow = perfNow();
+  if ((moneyChanged || S.money !== lastMoney) && tnow - lastHudT > 200) {   // a few times a second is plenty for text
+    moneyChanged = false; lastHudT = tnow;
     if (S.money > lastMoney && lastMoney >= 0 && !REDUCE) { pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); }
-    lastMoney = S.money; var m = fmt(S.money); elMoney.textContent = m; elWallet.textContent = m; refreshTray();
+    lastMoney = S.money; var m = fmt(S.money); if (elMoney.textContent !== m) { elMoney.textContent = m; elWallet.textContent = m; }
+    if (sheet.classList.contains('open') || tnow - lastTrayT > 1000) { lastTrayT = tnow; refreshTray(); }
   }
+  var ho = S.hype < .05 ? 0 : Math.round(S.hype * 20) / 20;
+  if (ho !== lastGlow) { lastGlow = ho; hglow.style.opacity = ho; hglow.classList.toggle('hot', ho > .5 && !REDUCE); }
+  if (TH() !== lastTheme) { lastTheme = TH(); fades.style.setProperty('--bg0', lastTheme.bg[0]); fades.style.setProperty('--bg1', lastTheme.bg[1]); }
   if (S.gems !== lastGems) { lastGems = S.gems; elGems.textContent = fmt(S.gems); }
   S.earn = S.earn.filter(function (e) { return S.t - e.t < 10; });
   var sum = 0; S.earn.forEach(function (e) { sum += e.v; });
@@ -83,7 +89,7 @@ setInterval(save, 8000);
 
 /* ---------- boot ---------- */
 function fit() {
-  var r = $id('stage').getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var r = $id('stage').getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, SET.saver ? 1.5 : 2);
   S.w = Math.max(1, r.width); S.h = Math.max(1, r.height);
   cv.width = Math.max(1, Math.round(S.w * dpr)); cv.height = Math.max(1, Math.round(S.h * dpr));
   if (sheet.classList.contains('open')) S.padTarget = Math.max(0, sheet.offsetHeight - 80);
@@ -97,11 +103,24 @@ if (saved && saved.time) showAway((Date.now() - saved.time) / 1000, saved.time);
 if (welcome.hidden && dailyReady() && S.tut >= 99) openPanel('daily');
 showTut();
 [].forEach.call(document.querySelectorAll('a[href="privacy.html"]'), function (a) { a.href = privacyUrl(); });
-var last = performance.now();
+/* ---------- frame pacing: smooth while you play, gentle on the battery while you watch ----------
+   60 fps while touching, zooming or while something is animating in; 30 fps when just watching
+   (and always with Battery saver). High refresh screens (120 Hz) never draw more than that. */
+var last = performance.now(), lastFrame = 0;
+function busy() {
+  var v = S.view, c = S.cam, t = camTarget();
+  return perfNow() - lastInput < 2500 || sheet.classList.contains('open') !== (S.padTarget > 0) || Math.abs(S.pad - S.padTarget) > 2 ||
+    Math.abs(S.deckAnim - S.lvl.garage) > .01 || Math.abs(c.l - t.l) + Math.abs(c.t - t.t) + Math.abs(c.r - t.r) + Math.abs(c.b - t.b) > 2 ||
+    (!v.user && Math.abs(v.z - defaultZoom()) > .005);
+}
 function loop(now) {
-  var dt = Math.min(.05, (now - last) / 1000); last = now;
-  update(dt); draw(); hud();
   requestAnimationFrame(loop);
+  var fps = SET.saver || !busy() ? 30 : 60;
+  if (now - lastFrame < 1000 / fps - 4) return;
+  lastFrame = now;
+  var dt = Math.min(.1, (now - last) / 1000); last = now;
+  if (dt > .03) { update(dt / 2); update(dt / 2); } else update(dt);   // keep simulation steps small
+  draw(); hud();
 }
 requestAnimationFrame(loop);
 // the first touch anywhere starts the sound (browsers need a gesture)
@@ -127,5 +146,5 @@ window.LittleLot = {
 };
 if (window.LLAuth && window.LLAuth.attach) window.LLAuth.attach(window.LittleLot);
 // ?debug exposes the internals for testing and balancing
-if (/[?&]debug\b/.test(location.search)) window.__ll = { S: S, ITEMS: ITEMS, PDEF: PDEF, plan: plan, econRate: econRate, update: update, doFranchise: doFranchise, starsGain: starsGain, buyPerk: buyPerk, claimGoal: claimGoal, goalReady: goalReady, GORDER: GORDER, applySave: applySave, snapshot: snapshot, tapLot: tapLot, nightAmt: nightAmt, daylight: daylight, fee: fee, mult: mult, flow: flow, startRush: startRush, collectVip: collectVip, buildTray: buildTray, fmt: fmt, LOC: LOC };
+if (/[?&]debug\b/.test(location.search)) window.__ll = { S: S, BG: BG, draw: draw, hud: hud, drawGround: drawGround, drawGarage: drawGarage, drawMarket: drawMarket, nightPass: nightPass, computeT: computeT, TOWN: function () { return TOWN; }, drawPlot: drawPlot, drawCar: drawCar, townShown: townShown, ctx: ctx, ITEMS: ITEMS, PDEF: PDEF, plan: plan, econRate: econRate, update: update, doFranchise: doFranchise, starsGain: starsGain, buyPerk: buyPerk, claimGoal: claimGoal, goalReady: goalReady, GORDER: GORDER, applySave: applySave, snapshot: snapshot, tapLot: tapLot, nightAmt: nightAmt, daylight: daylight, fee: fee, mult: mult, flow: flow, startRush: startRush, collectVip: collectVip, buildTray: buildTray, fmt: fmt, LOC: LOC };
 })();

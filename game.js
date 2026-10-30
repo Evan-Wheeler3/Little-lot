@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.0';
+var VERSION = '1.1.1';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -38,7 +38,7 @@ var PMAX = { hustle: 17, gold: Infinity, head: Infinity, tap: 10, lucky: 10, rus
 
 /* ---------- settings: stored apart from the save so they stay per device ---------- */
 var SET_KEY = 'littlelot.settings';
-var SET = { sfx: true, music: true, haptics: true, daynight: true, notify: true, sci: false };
+var SET = { sfx: true, music: true, haptics: true, daynight: true, notify: true, sci: false, saver: false };
 (function () { try { var j = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (j) for (var k in SET) if (typeof j[k] === 'boolean') SET[k] = j[k]; } catch (e) { /* defaults */ } })();
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) { /* ignore */ } }
 
@@ -268,12 +268,15 @@ function shade(hex, f) {
   if (f < 1) { r *= f; g *= f; b *= f; } else { r += (255 - r) * (f - 1); g += (255 - g) * (f - 1); b += (255 - b) * (f - 1); }
   return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
 }
+// SEAMS: a thin same-colour outline hides hairline gaps between faces. It doubles the drawing cost,
+// so it is only switched on while the still parts of the world are baked into the cached background.
+var SEAMS = false;
 function poly(pts, fill, edge, ew) {
   ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
   for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
   ctx.closePath();
   if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-  if (ew !== 0) { ctx.lineWidth = ew || 1; ctx.strokeStyle = edge || fill; ctx.lineJoin = 'round'; ctx.stroke(); }
+  if (ew > 0 || (ew === undefined && SEAMS)) { ctx.lineWidth = ew || 1; ctx.strokeStyle = edge || fill; ctx.lineJoin = 'round'; ctx.stroke(); }
 }
 // box: draws the three faces the camera can see
 function prism(x0, y0, z0, x1, y1, z1, c) {
@@ -313,10 +316,16 @@ function mix(a, b, t) {
   return '#' + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(bl)).toString(16).slice(1);
 }
 // soft light for the night pass (drawn with 'lighter')
+// soft light for the night pass (drawn with 'lighter'): one small pre-rendered sprite per colour, stretched into place
+var GLOWS = {};
 function glow(x, y, r, col, a) {
-  var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1;
+  var sp = GLOWS[col];
+  if (!sp) {
+    sp = GLOWS[col] = document.createElement('canvas'); sp.width = sp.height = 64;
+    var g2 = sp.getContext('2d'), g = g2.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = g; g2.fillRect(0, 0, 64, 64);
+  }
+  ctx.globalAlpha = a; ctx.drawImage(sp, x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1;
 }
 // tapered box: base rectangle at z0, smaller top rectangle at z1 (optionally shifted by tx,ty)
 function frustum(cx, cy, w, d, w2, d2, z0, z1, tx, ty, cT, cL, cR) {
@@ -440,7 +449,10 @@ function drawCar(c) {
   });
   var wh = [[.3, -.5], [.3, .5], [-.3, .5], [-.3, -.5]].map(function (w) { return orel(c.x, c.y, a, w[0] * L, w[1] * W); });
   wh.sort(function (p, q) { return (p.x + p.y) - (q.x + q.y); });
-  wh.forEach(function (w) { var p = P(w.x, w.y, 3.4); circle(p.x, p.y, 3.7, '#2d2842'); circle(p.x, p.y, 1.5, '#d7d1ea'); });
+  // all four tyres in one fill, then all four hubs in one fill
+  var wp = wh.map(function (w) { return P(w.x, w.y, 3.4); });
+  ctx.beginPath(); wp.forEach(function (p) { ctx.moveTo(p.x + 3.7, p.y); ctx.arc(p.x, p.y, 3.7, 0, 6.2832); }); ctx.fillStyle = '#2d2842'; ctx.fill();
+  ctx.beginPath(); wp.forEach(function (p) { ctx.moveTo(p.x + 1.5, p.y); ctx.arc(p.x, p.y, 1.5, 0, 6.2832); }); ctx.fillStyle = '#d7d1ea'; ctx.fill();
   var col = c.color, glass = '#9ad4ff', zt = zb + m.b;
   obox(c.x, c.y, a, hl, hw, zb, zt, .97, .93, 0, col, function () { return col; });
   // lights on the end the camera sees: headlights at the front, tail lights at the back
@@ -669,17 +681,18 @@ function lotLamps() {
   }
   return out;
 }
-// EV charger at the back of a bay; a cable and a pulse when a car is plugged in
-function drawCharger(s) {
-  var bx = s.x + .18, by = s.row === 'N' ? s.y + .1 : s.y + .9;
+// EV charger at the back of a bay: the post is baked into the background, the cable to a plugged-in car pulses live
+function chargerAt(s) { return { x: s.x + .18, y: s.row === 'N' ? s.y + .1 : s.y + .9 }; }
+function drawChargerPost(s) {
+  var c = chargerAt(s), bx = c.x, by = c.y;
   prism(bx - .06, by - .05, 0, bx + .06, by + .05, 15, '#e9edf7');
   prism(bx - .07, by - .06, 15, bx + .07, by + .06, 18, '#2fae7c');
   var p = P(bx + .07, by, 10);
   ctx.fillStyle = '#ffd04a'; ctx.beginPath(); ctx.moveTo(p.x + 1, p.y - 4); ctx.lineTo(p.x - 2, p.y + .5); ctx.lineTo(p.x, p.y + .5); ctx.lineTo(p.x - 1, p.y + 4); ctx.lineTo(p.x + 2, p.y - .5); ctx.lineTo(p.x, p.y - .5); ctx.closePath(); ctx.fill();
-  if (s.car && s.car.state === 'parked') {
-    var cp = P(s.car.x, s.car.y, 8), on = REDUCE ? 1 : .6 + .4 * Math.sin(S.t * 5 + s.x);
-    ctx.globalAlpha = on; line(p, cp, 1.6, '#2fae7c'); ctx.globalAlpha = 1;
-  }
+}
+function drawCable(s) {
+  var c = chargerAt(s), p = P(c.x + .07, c.y, 10), cp = P(s.car.x, s.car.y, 8), on = REDUCE ? 1 : .6 + .4 * Math.sin(S.t * 5 + s.x);
+  ctx.globalAlpha = on; line(p, cp, 1.6, '#2fae7c'); ctx.globalAlpha = 1;
 }
 function drawBillboard() {
   var x = -11.2, y = 9.2;
@@ -729,8 +742,14 @@ function drawGarageCars(d, z0) {
     if (!s || !s.car) continue;
     var p = slotPos(j);
     if (d === 0 && j >= 1 && j <= 3) continue;   // the ground-floor doorway
-    ZOFF = z0 + 4; drawCar({ x: p.x, y: p.y, ang: p.a, type: s.type || 'sedan', color: s.color, id: j, moving: false }); ZOFF = 0;
+    ZOFF = z0 + 4; carLite(p.x, p.y, p.a, s.type, s.color); ZOFF = 0;
   }
+}
+// cars seen through the garage openings: just body and cabin, they are small and half hidden
+function carLite(x, y, a, type, col) {
+  var m = CARS[type] || CARS.sedan, hl = m.L / 2, hw = m.W / 2, ca = Math.cos(a), sa = Math.sin(a);
+  obox(x, y, a, hl, hw, 2, 2 + m.b, .97, .93, 0, col, function () { return col; });
+  obox(x + ca * m.co * m.L, y + sa * m.co * m.L, a, hl * m.cl, hw * m.cw, 2 + m.b, 2 + m.b + m.ch, .74, .8, 0, shade(col, 1.08), function () { return '#9ad4ff'; });
 }
 function drawDeck(d, z0, top) {
   var x, y;
@@ -1147,7 +1166,7 @@ function update(dt) {
   if (SET.daynight) S.tod = (S.tod + dt / 480) % 1;   // an eight-minute day
   S.clouds.forEach(function (c) { c.x += c.v * dt; if (c.x > 30) c.x = -30; });
   if (S.lvl.promoter && S.rushReady > 0) startRush();
-  stepCam(dt); tickMeta(dt);
+  stepCam(dt); tickMeta(dt); townGrowth();
 }
 /* ---------- goals, rush hour and franchise perks: the reasons to keep playing ---------- */
 var GDEF = {
@@ -1319,15 +1338,12 @@ function buildTown() {
   STREET_TREES = [];
   for (x = -15.5; x < 24; x += 4.6) { STREET_TREES.push([x, BACK_ST[0] - .25, 0]); STREET_TREES.push([x + 2.3, BACK_ST[1] + .25, 1]); }
   for (y = -4; y < 8; y += 3.4) { STREET_TREES.push([SIDE_W[0] - .3, y, 0]); STREET_TREES.push([SIDE_E[1] + .3, y + 1.7, 1]); }
-  S.built = {};
+  lastShown = -1;
 }
 // the town fills in with every upgrade you buy this run
 function levelSum() { var n = 0, k; for (k in S.lvl) n += Math.min(30, S.lvl[k]); return n; }
 function townShown() { return Math.min(TOWN.length, 14 + Math.floor(levelSum() * 1.1)); }
-function drawPlot(p, i) {
-  if (!S.built[i]) S.built[i] = S.t || .001;
-  var a = Math.min(1, (S.t - S.built[i]) / .6 + (S.t < 1 ? 1 : 0));
-  if (a < 1) ctx.globalAlpha = a;
+function drawPlot(p) {
   switch (p.t) {
     case 'house': drawHouse(p); break;
     case 'park': var th = TH(); drawTreeKind(th.tree, p.x + .45, p.y + .5, p.s); drawTreeKind(th.tree2, p.x + 1.2, p.y + 1, p.s * .85); break;
@@ -1336,7 +1352,13 @@ function drawPlot(p, i) {
     case 'neon': drawNeonTower(p); break;
     default: drawTower(p);
   }
-  ctx.globalAlpha = 1;
+}
+// new houses arrive with a puff of sparkles
+var lastShown = -1;
+function townGrowth() {
+  var n = townShown();
+  if (lastShown >= 0 && n > lastShown && S.t > 1) for (var i = lastShown; i < n; i++) { var p = TOWN[i]; S.fx.push({ kind: 'pop', x: p.x + p.w / 2, y: p.y + p.d / 2, z: 20, t: 0 }); }
+  lastShown = n;
 }
 function drawTreeKind(t, x, y, s) {
   switch (t) {
@@ -1384,7 +1406,6 @@ function drawGround() {
   for (x = -17; x < 26; x += 1.5) quadA(x, -7.03, x + .7, -6.97, 'rgba(255,255,255,.5)');
   drawRoad();
   drawLotGround();
-  drawCloudShadows();
 }
 // the main road: lanes, kerbs, sidewalks and markings for its tier
 function drawRoad() {
@@ -1589,23 +1610,59 @@ function drawGem(x, y, r) {
   ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r * .85, y - r * .25); ctx.lineTo(x, y + r); ctx.lineTo(x - r * .85, y - r * .25); ctx.closePath();
   ctx.fillStyle = '#6fe3ff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
 }
+/* ---------- the cached background ----------
+   Grass, streets, the road, the lot paint and the town behind the lot hardly ever change, so they are drawn once
+   into an offscreen canvas (with a margin for panning) and copied to the screen each frame. It is redrawn only when
+   the layout changes, the town grows, or the zoom drifts; while pinching, the old copy is simply scaled. */
+var BG = { cv: null, key: '', ox: 0, oy: 0, k: 1, m: 0 };
+function bgKey() { return [S.theme, S.lvl.space, roadTier(), washLanes(), S.deckAnim > .02 ? 1 : 0, shopTier(), Math.min(S.lvl.ev, builtCols()), townShown(), cv.width, cv.height].join(); }
+function inBg(p) { return p.y + p.d < RY - .45; }   // town plots north of the road never have anything moving behind them
+function bakeBg(key) {
+  var m = Math.round(Math.max(cv.width, cv.height) * .2), main = ctx, k = T.k, th = TH(), i;
+  if (!BG.cv) BG.cv = document.createElement('canvas');
+  if (BG.cv.width !== cv.width + 2 * m || BG.cv.height !== cv.height + 2 * m) { BG.cv.width = cv.width + 2 * m; BG.cv.height = cv.height + 2 * m; }
+  ctx = BG.cv.getContext('2d'); SEAMS = true;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  var g = ctx.createLinearGradient(0, 0, 0, BG.cv.height); g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, BG.cv.width, BG.cv.height);
+  var ox = T.ox + m, oy = T.oy + m;
+  ctx.setTransform(k, 0, 0, k, ox, oy);
+  V.x0 = -ox / k; V.x1 = (BG.cv.width - ox) / k; V.y0 = -oy / k; V.y1 = (BG.cv.height - oy) / k;
+  ZOFF = 0;
+  drawGround();
+  var L = [], n = townShown();
+  for (i = 0; i < n; i++) (function (p, i) { if (inBg(p) && onScreen(p.x, p.y)) L.push({ d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
+  STREET_TREES.forEach(function (t) { if (onScreen(t[0], t[1])) L.push({ d: t[0] + t[1], f: function () { drawTreeKind(t[2] ? TH().tree2 : TH().tree, t[0], t[1], .75); } }); });
+  S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) L.push({ d: s.x + s.y + 50, f: function () { drawChargerPost(s); } }); });
+  L.sort(function (a, b) { return a.d - b.d; }); L.forEach(function (o) { o.f(); });
+  SEAMS = false; ctx = main;
+  BG.key = key; BG.ox = T.ox; BG.oy = T.oy; BG.k = k; BG.m = m; BG.n = (BG.n || 0) + 1;
+}
+function drawBg(interacting) {
+  var key = bgKey(), s = T.k / BG.k, m = BG.m;
+  var dx = T.ox - (BG.ox + m) * s, dy = T.oy - (BG.oy + m) * s, dw = (BG.cv ? BG.cv.width : 0) * s, dh = (BG.cv ? BG.cv.height : 0) * s;
+  var uncovered = dx > 0 || dy > 0 || dx + dw < cv.width || dy + dh < cv.height;
+  if (!BG.cv || key !== BG.key || Math.abs(s - 1) > (interacting ? .4 : .01) || (uncovered && !interacting)) {
+    bakeBg(key); s = 1; dx = T.ox - BG.ox - BG.m; dy = T.oy - BG.oy - BG.m; dw = BG.cv.width; dh = BG.cv.height; uncovered = false;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (uncovered) { ctx.fillStyle = TH().bg[1]; ctx.fillRect(0, 0, cv.width, cv.height); }
+  if (s === 1) ctx.drawImage(BG.cv, Math.round(dx), Math.round(dy)); else ctx.drawImage(BG.cv, dx, dy, dw, dh);
+}
 function draw() {
   computeT();
   var k = T.k, th = TH(), i;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  var g = ctx.createLinearGradient(0, 0, 0, cv.height); g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+  drawBg(perfNow() - lastInput < 600);
   ctx.setTransform(k, 0, 0, k, T.ox, T.oy);
   V.x0 = -T.ox / k; V.x1 = (cv.width - T.ox) / k; V.y0 = -T.oy / k; V.y1 = (cv.height - T.oy) / k;
   ZOFF = 0;
-  drawGround();
+  if (!SET.saver) drawCloudShadows();
 
   // three passes, back to front: everything north of the road, then the road, then the far side
   var north = [], road = [], south = [], ex = EXX(), sp = shopSpan();
   var put = function (y, o) { (y < RY - .45 ? north : y < RY + 8 ? road : south).push(o); };
   var n = townShown();
-  for (i = 0; i < n; i++) (function (p, i) { if (onScreen(p.x, p.y)) put(p.y + p.d, { d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
-  STREET_TREES.forEach(function (t) { if (onScreen(t[0], t[1])) north.push({ d: t[0] + t[1], f: function () { drawTreeKind(t[2] ? TH().tree2 : TH().tree, t[0], t[1], .75); } }); });
+  for (i = 0; i < n; i++) (function (p, i) { if (!inBg(p) && onScreen(p.x, p.y)) put(p.y + p.d, { d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
   if (S.deckAnim > .02) north.push({ d: GX0 + GY1, f: drawGarage });
   north.push({ d: sp[0] + shopFrontY() - .2, f: drawMarket });
   if (S.lvl.wash) north.push({ d: WX0 + WYS[0] + .55, f: drawWash });
@@ -1614,10 +1671,10 @@ function draw() {
   if (S.lvl.ads >= 3) road.push({ d: -11.2 + 9.2, f: drawBillboard });
   if (S.lvl.valet >= 1) north.push({ d: -1.85 + 7.6, f: drawValet });
   lotLamps().forEach(function (l) { (l[1] > 9.4 ? road : north).push({ d: l[0] + l[1], f: function () { drawLotLamp(l[0], l[1]); } }); });
-  S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) north.push({ d: s.x + s.y + (s.row === 'N' ? .1 : .9), f: function () { drawCharger(s); } }); });
-  S.cars.forEach(function (c) { if (!hiddenCar(c)) put(c.y, { d: c.x + c.y, f: function () { drawCar(c); } }); });
+  S.spots.forEach(function (s) { if (unlocked(s) && evBay(s) && s.car && s.car.state === 'parked') north.push({ d: s.x + s.y + (s.row === 'N' ? .1 : .9), f: function () { drawCable(s); } }); });
+  S.cars.forEach(function (c) { if (!hiddenCar(c) && onScreen(c.x, c.y)) put(c.y, { d: c.x + c.y, f: function () { drawCar(c); } }); });
   S.traffic.forEach(function (c) { if (onScreen(c.x, c.y)) road.push({ d: c.x + c.y, f: function () { drawCar(c); } }); });
-  S.walkers.forEach(function (w) { if (w.state !== 'inside') north.push({ d: w.x + w.y + .05, f: function () { drawWalker(w); } }); });
+  S.walkers.forEach(function (w) { if (w.state !== 'inside' && onScreen(w.x, w.y)) north.push({ d: w.x + w.y + .05, f: function () { drawWalker(w); } }); });
   roadObjects(road);
   var byDepth = function (a, b) { return a.d - b.d; };
   [north, road, south].forEach(function (L) { L.sort(byDepth); L.forEach(function (o) { o.f(); }); });
@@ -1642,24 +1699,16 @@ function draw() {
   });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   var dpr = T.dpr;
-  if (S.hype > .05) {   // hustle: a warm glow at the edges that grows with the meter
-    var pu = REDUCE ? .5 : .5 + .5 * Math.sin(S.t * (4 + 6 * S.hype));
-    var rg = ctx.createRadialGradient(cv.width / 2, cv.height / 2, Math.min(cv.width, cv.height) * .35, cv.width / 2, cv.height / 2, Math.max(cv.width, cv.height) * .75);
-    rg.addColorStop(0, 'rgba(255,140,190,0)'); rg.addColorStop(1, 'rgba(255,140,190,' + (S.hype * (.18 + .08 * pu)) + ')');
-    ctx.fillStyle = rg; ctx.fillRect(0, 0, cv.width, cv.height);
-  }
   S.fx.forEach(function (f) {
     if (f.kind !== 'conf') return;
     var x = (f.x + f.vx * f.t) * cv.width, y = (f.y + f.vy * f.t) * cv.height;
     ctx.save(); ctx.translate(x, y); ctx.rotate(f.r + f.t * 6); ctx.globalAlpha = Math.max(0, 1 - f.t / 3);
     ctx.fillStyle = f.c; ctx.fillRect(-4 * dpr, -2.5 * dpr, 8 * dpr, 5 * dpr); ctx.restore();
   });
-  var h1 = ctx.createLinearGradient(0, 0, 0, 190 * dpr); h1.addColorStop(0, hexA(th.bg[0], .78)); h1.addColorStop(1, hexA(th.bg[0], 0));
-  ctx.fillStyle = h1; ctx.fillRect(0, 0, cv.width, 190 * dpr);
-  var h2 = ctx.createLinearGradient(0, cv.height - 170 * dpr, 0, cv.height); h2.addColorStop(0, hexA(th.bg[1], 0)); h2.addColorStop(1, hexA(th.bg[1], .8));
-  ctx.fillStyle = h2; ctx.fillRect(0, cv.height - 170 * dpr, cv.width, 170 * dpr);
 }
 
+var lastInput = -1e9;
+function perfNow() { return performance.now(); }
 /* ---------- touch: tap to hustle, drag to look around, pinch or scroll to zoom ---------- */
 var PTR = {}, pinch = null, dragged = false;
 function ptrCount() { return Object.keys(PTR).length; }
@@ -1673,7 +1722,7 @@ function tapAt(sx, sy) {
   tapLot(l.x, l.y);
 }
 cv.addEventListener('pointerdown', function (e) {
-  audioUnlock();
+  audioUnlock(); lastInput = perfNow();
   var p = cssPt(e); PTR[e.pointerId] = { x: p.x, y: p.y, sx: p.x, sy: p.y, t: performance.now() };
   try { cv.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ }
   if (ptrCount() === 1) dragged = false;
@@ -1681,6 +1730,7 @@ cv.addEventListener('pointerdown', function (e) {
 });
 cv.addEventListener('pointermove', function (e) {
   var q = PTR[e.pointerId]; if (!q) return;
+  lastInput = perfNow();
   var p = cssPt(e), ids = Object.keys(PTR);
   if (ids.length === 1) {
     if (!dragged && Math.hypot(p.x - q.sx, p.y - q.sy) > 9) dragged = true;
@@ -1704,7 +1754,7 @@ function ptrEnd(e) {
 cv.addEventListener('pointerup', ptrEnd);
 cv.addEventListener('pointercancel', ptrEnd);
 cv.addEventListener('wheel', function (e) {
-  e.preventDefault();
+  e.preventDefault(); lastInput = perfNow();
   var p = cssPt(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0015)));
 }, { passive: false });
 // iOS Safari sends its own pinch gestures; the canvas handles zoom itself
@@ -1720,7 +1770,7 @@ function audioUnlock() {
   musBus = AC.createGain(); musBus.gain.value = SET.music ? .5 : 0; musBus.connect(comp);
   startMusic();
 }
-function setMusic(on) { if (musBus) musBus.gain.setTargetAtTime(on ? .5 : 0, AC.currentTime, .3); }
+function setMusic(on) { if (!musBus) return; if (on && AC.state === 'suspended') AC.resume(); musBus.gain.setTargetAtTime(on ? .5 : 0, AC.currentTime, .3); audioNap(); }
 function tone(f, t0, dur, type, vol, f2, bus) {
   var o = AC.createOscillator(), g = AC.createGain();
   o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0);
@@ -1729,8 +1779,17 @@ function tone(f, t0, dur, type, vol, f2, bus) {
   o.connect(g); g.connect(bus || sfxBus); o.start(t0); o.stop(t0 + dur + .05);
 }
 var GAP = { coin: .07, tap: .03, vip: .3, buy: .05 };
+// with the music off, the audio engine sleeps between sound effects instead of running all the time
+var sleepT = 0;
+function audioNap() {
+  clearTimeout(sleepT);
+  if (AC && !SET.music) sleepT = setTimeout(function () { if (AC && !SET.music && AC.state === 'running') AC.suspend(); }, 3000);
+}
 function sfx(k, x) {
-  if (!AC || !SET.sfx || document.hidden || AC.state !== 'running') return;
+  if (!AC || !SET.sfx || document.hidden) return;
+  if (AC.state === 'suspended' && !SET.music) { AC.resume(); audioNap(); return; }   // wakes up for the next sound
+  if (AC.state !== 'running') return;
+  audioNap();
   var n = AC.currentTime;
   if (GAP[k] && n - (lastSfx[k] || 0) < GAP[k]) return;
   lastSfx[k] = n;
@@ -1768,7 +1827,7 @@ function startMusic() {
 }
 document.addEventListener('visibilitychange', function () {
   if (!AC) return;
-  if (document.hidden) AC.suspend(); else { AC.resume(); musT = AC.currentTime + .1; }
+  if (document.hidden) AC.suspend(); else if (SET.music) { AC.resume(); musT = AC.currentTime + .1; }
 });
 
 /* ---------- the native app shell (Capacitor) when there is one ---------- */
@@ -2199,7 +2258,7 @@ function mapHtml() {
 }
 // inside the app the policy opens in Safari from the published site, so the game never navigates away
 function privacyUrl() { var u = (window.LL_CONFIG || {}).SITE_URL; return isNative() && u ? u.replace(/\/?$/, '/') + 'privacy.html' : 'privacy.html'; }
-var SETS = [['sfx', 'Sound effects'], ['music', 'Music'], ['haptics', 'Vibration'], ['daynight', 'Day and night'], ['notify', 'Reminders'], ['sci', 'Scientific numbers']];
+var SETS = [['saver', 'Battery saver'], ['sfx', 'Sound effects'], ['music', 'Music'], ['haptics', 'Vibration'], ['daynight', 'Day and night'], ['notify', 'Reminders'], ['sci', 'Scientific numbers']];
 function setHtml() {
   var cfg = window.LL_CONFIG || {}, h = '<div class="toggles">';
   SETS.forEach(function (s) {
@@ -2242,6 +2301,7 @@ panelEl.addEventListener('click', function (e) {
     if (k === 'daynight' && !SET.daynight) S.tod = 0;
     if (k === 'notify') { if (SET.notify) notifyAsk(); notifyPlan(); }
     if (k === 'sci') { moneyChanged = true; buildTray(); }
+    if (k === 'saver') fit();
     return;
   }
   switch (b.getAttribute('data-act')) {
@@ -2303,13 +2363,19 @@ var elMoney = $id('money'), elParked = $id('parked'), pill = $id('moneyPill'), e
 var elStars = $id('stars'), starPill = $id('starPill'), elGems = $id('gems'), boostChip = $id('boostChip'), boostT = $id('boostT');
 var hypeEl = $id('hype'), hypeFill = $id('hypeFill'), hypeTxt = $id('hypeTxt'), recenterBtn = $id('recenter');
 var dailyDot = $id('dailyDot'), shopDot = $id('shopDot'), rushBtn = $id('rushBtn');
+var hglow = $id('hglow'), fades = $id('stage'), lastHudT = 0, lastTrayT = 0, lastGlow = -1, lastTheme = null;
 var lastMoney = -1, lastParked = '', lastRate = '', lastFr = 0, lastGoalChk = 0, lastGoals = 0, lastGems = -1, lastHype = '';
 function hud() {
-  if (moneyChanged || S.money !== lastMoney) {
-    moneyChanged = false;
+  var tnow = perfNow();
+  if ((moneyChanged || S.money !== lastMoney) && tnow - lastHudT > 200) {   // a few times a second is plenty for text
+    moneyChanged = false; lastHudT = tnow;
     if (S.money > lastMoney && lastMoney >= 0 && !REDUCE) { pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); }
-    lastMoney = S.money; var m = fmt(S.money); elMoney.textContent = m; elWallet.textContent = m; refreshTray();
+    lastMoney = S.money; var m = fmt(S.money); if (elMoney.textContent !== m) { elMoney.textContent = m; elWallet.textContent = m; }
+    if (sheet.classList.contains('open') || tnow - lastTrayT > 1000) { lastTrayT = tnow; refreshTray(); }
   }
+  var ho = S.hype < .05 ? 0 : Math.round(S.hype * 20) / 20;
+  if (ho !== lastGlow) { lastGlow = ho; hglow.style.opacity = ho; hglow.classList.toggle('hot', ho > .5 && !REDUCE); }
+  if (TH() !== lastTheme) { lastTheme = TH(); fades.style.setProperty('--bg0', lastTheme.bg[0]); fades.style.setProperty('--bg1', lastTheme.bg[1]); }
   if (S.gems !== lastGems) { lastGems = S.gems; elGems.textContent = fmt(S.gems); }
   S.earn = S.earn.filter(function (e) { return S.t - e.t < 10; });
   var sum = 0; S.earn.forEach(function (e) { sum += e.v; });
@@ -2382,7 +2448,7 @@ setInterval(save, 8000);
 
 /* ---------- boot ---------- */
 function fit() {
-  var r = $id('stage').getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var r = $id('stage').getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, SET.saver ? 1.5 : 2);
   S.w = Math.max(1, r.width); S.h = Math.max(1, r.height);
   cv.width = Math.max(1, Math.round(S.w * dpr)); cv.height = Math.max(1, Math.round(S.h * dpr));
   if (sheet.classList.contains('open')) S.padTarget = Math.max(0, sheet.offsetHeight - 80);
@@ -2396,11 +2462,24 @@ if (saved && saved.time) showAway((Date.now() - saved.time) / 1000, saved.time);
 if (welcome.hidden && dailyReady() && S.tut >= 99) openPanel('daily');
 showTut();
 [].forEach.call(document.querySelectorAll('a[href="privacy.html"]'), function (a) { a.href = privacyUrl(); });
-var last = performance.now();
+/* ---------- frame pacing: smooth while you play, gentle on the battery while you watch ----------
+   60 fps while touching, zooming or while something is animating in; 30 fps when just watching
+   (and always with Battery saver). High refresh screens (120 Hz) never draw more than that. */
+var last = performance.now(), lastFrame = 0;
+function busy() {
+  var v = S.view, c = S.cam, t = camTarget();
+  return perfNow() - lastInput < 2500 || sheet.classList.contains('open') !== (S.padTarget > 0) || Math.abs(S.pad - S.padTarget) > 2 ||
+    Math.abs(S.deckAnim - S.lvl.garage) > .01 || Math.abs(c.l - t.l) + Math.abs(c.t - t.t) + Math.abs(c.r - t.r) + Math.abs(c.b - t.b) > 2 ||
+    (!v.user && Math.abs(v.z - defaultZoom()) > .005);
+}
 function loop(now) {
-  var dt = Math.min(.05, (now - last) / 1000); last = now;
-  update(dt); draw(); hud();
   requestAnimationFrame(loop);
+  var fps = SET.saver || !busy() ? 30 : 60;
+  if (now - lastFrame < 1000 / fps - 4) return;
+  lastFrame = now;
+  var dt = Math.min(.1, (now - last) / 1000); last = now;
+  if (dt > .03) { update(dt / 2); update(dt / 2); } else update(dt);   // keep simulation steps small
+  draw(); hud();
 }
 requestAnimationFrame(loop);
 // the first touch anywhere starts the sound (browsers need a gesture)
@@ -2426,5 +2505,5 @@ window.LittleLot = {
 };
 if (window.LLAuth && window.LLAuth.attach) window.LLAuth.attach(window.LittleLot);
 // ?debug exposes the internals for testing and balancing
-if (/[?&]debug\b/.test(location.search)) window.__ll = { S: S, ITEMS: ITEMS, PDEF: PDEF, plan: plan, econRate: econRate, update: update, doFranchise: doFranchise, starsGain: starsGain, buyPerk: buyPerk, claimGoal: claimGoal, goalReady: goalReady, GORDER: GORDER, applySave: applySave, snapshot: snapshot, tapLot: tapLot, nightAmt: nightAmt, daylight: daylight, fee: fee, mult: mult, flow: flow, startRush: startRush, collectVip: collectVip, buildTray: buildTray, fmt: fmt, LOC: LOC };
+if (/[?&]debug\b/.test(location.search)) window.__ll = { S: S, BG: BG, draw: draw, hud: hud, drawGround: drawGround, drawGarage: drawGarage, drawMarket: drawMarket, nightPass: nightPass, computeT: computeT, TOWN: function () { return TOWN; }, drawPlot: drawPlot, drawCar: drawCar, townShown: townShown, ctx: ctx, ITEMS: ITEMS, PDEF: PDEF, plan: plan, econRate: econRate, update: update, doFranchise: doFranchise, starsGain: starsGain, buyPerk: buyPerk, claimGoal: claimGoal, goalReady: goalReady, GORDER: GORDER, applySave: applySave, snapshot: snapshot, tapLot: tapLot, nightAmt: nightAmt, daylight: daylight, fee: fee, mult: mult, flow: flow, startRush: startRush, collectVip: collectVip, buildTray: buildTray, fmt: fmt, LOC: LOC };
 })();

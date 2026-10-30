@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.0';
+var VERSION = '1.1.1';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -38,7 +38,7 @@ var PMAX = { hustle: 17, gold: Infinity, head: Infinity, tap: 10, lucky: 10, rus
 
 /* ---------- settings: stored apart from the save so they stay per device ---------- */
 var SET_KEY = 'littlelot.settings';
-var SET = { sfx: true, music: true, haptics: true, daynight: true, notify: true, sci: false };
+var SET = { sfx: true, music: true, haptics: true, daynight: true, notify: true, sci: false, saver: false };
 (function () { try { var j = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (j) for (var k in SET) if (typeof j[k] === 'boolean') SET[k] = j[k]; } catch (e) { /* defaults */ } })();
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) { /* ignore */ } }
 

@@ -56,7 +56,10 @@ function drawCar(c) {
   });
   var wh = [[.3, -.5], [.3, .5], [-.3, .5], [-.3, -.5]].map(function (w) { return orel(c.x, c.y, a, w[0] * L, w[1] * W); });
   wh.sort(function (p, q) { return (p.x + p.y) - (q.x + q.y); });
-  wh.forEach(function (w) { var p = P(w.x, w.y, 3.4); circle(p.x, p.y, 3.7, '#2d2842'); circle(p.x, p.y, 1.5, '#d7d1ea'); });
+  // all four tyres in one fill, then all four hubs in one fill
+  var wp = wh.map(function (w) { return P(w.x, w.y, 3.4); });
+  ctx.beginPath(); wp.forEach(function (p) { ctx.moveTo(p.x + 3.7, p.y); ctx.arc(p.x, p.y, 3.7, 0, 6.2832); }); ctx.fillStyle = '#2d2842'; ctx.fill();
+  ctx.beginPath(); wp.forEach(function (p) { ctx.moveTo(p.x + 1.5, p.y); ctx.arc(p.x, p.y, 1.5, 0, 6.2832); }); ctx.fillStyle = '#d7d1ea'; ctx.fill();
   var col = c.color, glass = '#9ad4ff', zt = zb + m.b;
   obox(c.x, c.y, a, hl, hw, zb, zt, .97, .93, 0, col, function () { return col; });
   // lights on the end the camera sees: headlights at the front, tail lights at the back

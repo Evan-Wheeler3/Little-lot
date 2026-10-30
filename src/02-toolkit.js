@@ -14,12 +14,15 @@ function shade(hex, f) {
   if (f < 1) { r *= f; g *= f; b *= f; } else { r += (255 - r) * (f - 1); g += (255 - g) * (f - 1); b += (255 - b) * (f - 1); }
   return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
 }
+// SEAMS: a thin same-colour outline hides hairline gaps between faces. It doubles the drawing cost,
+// so it is only switched on while the still parts of the world are baked into the cached background.
+var SEAMS = false;
 function poly(pts, fill, edge, ew) {
   ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
   for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
   ctx.closePath();
   if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-  if (ew !== 0) { ctx.lineWidth = ew || 1; ctx.strokeStyle = edge || fill; ctx.lineJoin = 'round'; ctx.stroke(); }
+  if (ew > 0 || (ew === undefined && SEAMS)) { ctx.lineWidth = ew || 1; ctx.strokeStyle = edge || fill; ctx.lineJoin = 'round'; ctx.stroke(); }
 }
 // box: draws the three faces the camera can see
 function prism(x0, y0, z0, x1, y1, z1, c) {
@@ -59,10 +62,16 @@ function mix(a, b, t) {
   return '#' + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(bl)).toString(16).slice(1);
 }
 // soft light for the night pass (drawn with 'lighter')
+// soft light for the night pass (drawn with 'lighter'): one small pre-rendered sprite per colour, stretched into place
+var GLOWS = {};
 function glow(x, y, r, col, a) {
-  var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1;
+  var sp = GLOWS[col];
+  if (!sp) {
+    sp = GLOWS[col] = document.createElement('canvas'); sp.width = sp.height = 64;
+    var g2 = sp.getContext('2d'), g = g2.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = g; g2.fillRect(0, 0, 64, 64);
+  }
+  ctx.globalAlpha = a; ctx.drawImage(sp, x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1;
 }
 // tapered box: base rectangle at z0, smaller top rectangle at z1 (optionally shifted by tx,ty)
 function frustum(cx, cy, w, d, w2, d2, z0, z1, tx, ty, cT, cL, cR) {

@@ -62,7 +62,7 @@ function mapHtml() {
 }
 // inside the app the policy opens in Safari from the published site, so the game never navigates away
 function privacyUrl() { var u = (window.LL_CONFIG || {}).SITE_URL; return isNative() && u ? u.replace(/\/?$/, '/') + 'privacy.html' : 'privacy.html'; }
-var SETS = [['sfx', 'Sound effects'], ['music', 'Music'], ['haptics', 'Vibration'], ['daynight', 'Day and night'], ['notify', 'Reminders'], ['sci', 'Scientific numbers']];
+var SETS = [['saver', 'Battery saver'], ['sfx', 'Sound effects'], ['music', 'Music'], ['haptics', 'Vibration'], ['daynight', 'Day and night'], ['notify', 'Reminders'], ['sci', 'Scientific numbers']];
 function setHtml() {
   var cfg = window.LL_CONFIG || {}, h = '<div class="toggles">';
   SETS.forEach(function (s) {
@@ -105,6 +105,7 @@ panelEl.addEventListener('click', function (e) {
     if (k === 'daynight' && !SET.daynight) S.tod = 0;
     if (k === 'notify') { if (SET.notify) notifyAsk(); notifyPlan(); }
     if (k === 'sci') { moneyChanged = true; buildTray(); }
+    if (k === 'saver') fit();
     return;
   }
   switch (b.getAttribute('data-act')) {

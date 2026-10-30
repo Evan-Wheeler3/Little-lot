@@ -18,6 +18,7 @@ Plain HTML, CSS and JavaScript with no framework. It runs in any browser and shi
 - **Away earnings**: the lot earns while closed (40% speed for 4 hours at first, both upgradeable), with an option to double it for gems.
 - **Daily gift**: a seven-day streak calendar.
 - **Gems and shop**: earned from goals, golden cars, franchising and daily gifts. Spend them on x2 income, time warps, a hustle lock and golden car parades. Gem packs, a Golden Pass and a starter pack are in-app purchases in the iOS app.
+- **Battery friendly**: the still parts of the world are drawn once into a cached layer, the game runs at 60 fps only while you are touching it (30 fps otherwise, never 120), and Settings has a Battery saver that caps it at 30 fps with a lighter resolution.
 - **Polish**: day and night with lights, cloud shadows, smooth steering and braking, synthesized sound and music, haptics, a short tutorial, settings, and reduced motion support.
 - **Accounts** (optional): email sign-in with cloud saves through Supabase, password reset, and in-app account deletion.
 

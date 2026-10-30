@@ -365,5 +365,5 @@ function update(dt) {
   if (SET.daynight) S.tod = (S.tod + dt / 480) % 1;   // an eight-minute day
   S.clouds.forEach(function (c) { c.x += c.v * dt; if (c.x > 30) c.x = -30; });
   if (S.lvl.promoter && S.rushReady > 0) startRush();
-  stepCam(dt); tickMeta(dt);
+  stepCam(dt); tickMeta(dt); townGrowth();
 }

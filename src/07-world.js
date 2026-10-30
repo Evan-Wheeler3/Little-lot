@@ -44,15 +44,12 @@ function buildTown() {
   STREET_TREES = [];
   for (x = -15.5; x < 24; x += 4.6) { STREET_TREES.push([x, BACK_ST[0] - .25, 0]); STREET_TREES.push([x + 2.3, BACK_ST[1] + .25, 1]); }
   for (y = -4; y < 8; y += 3.4) { STREET_TREES.push([SIDE_W[0] - .3, y, 0]); STREET_TREES.push([SIDE_E[1] + .3, y + 1.7, 1]); }
-  S.built = {};
+  lastShown = -1;
 }
 // the town fills in with every upgrade you buy this run
 function levelSum() { var n = 0, k; for (k in S.lvl) n += Math.min(30, S.lvl[k]); return n; }
 function townShown() { return Math.min(TOWN.length, 14 + Math.floor(levelSum() * 1.1)); }
-function drawPlot(p, i) {
-  if (!S.built[i]) S.built[i] = S.t || .001;
-  var a = Math.min(1, (S.t - S.built[i]) / .6 + (S.t < 1 ? 1 : 0));
-  if (a < 1) ctx.globalAlpha = a;
+function drawPlot(p) {
   switch (p.t) {
     case 'house': drawHouse(p); break;
     case 'park': var th = TH(); drawTreeKind(th.tree, p.x + .45, p.y + .5, p.s); drawTreeKind(th.tree2, p.x + 1.2, p.y + 1, p.s * .85); break;
@@ -61,7 +58,13 @@ function drawPlot(p, i) {
     case 'neon': drawNeonTower(p); break;
     default: drawTower(p);
   }
-  ctx.globalAlpha = 1;
+}
+// new houses arrive with a puff of sparkles
+var lastShown = -1;
+function townGrowth() {
+  var n = townShown();
+  if (lastShown >= 0 && n > lastShown && S.t > 1) for (var i = lastShown; i < n; i++) { var p = TOWN[i]; S.fx.push({ kind: 'pop', x: p.x + p.w / 2, y: p.y + p.d / 2, z: 20, t: 0 }); }
+  lastShown = n;
 }
 function drawTreeKind(t, x, y, s) {
   switch (t) {
@@ -109,7 +112,6 @@ function drawGround() {
   for (x = -17; x < 26; x += 1.5) quadA(x, -7.03, x + .7, -6.97, 'rgba(255,255,255,.5)');
   drawRoad();
   drawLotGround();
-  drawCloudShadows();
 }
 // the main road: lanes, kerbs, sidewalks and markings for its tier
 function drawRoad() {

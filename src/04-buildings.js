@@ -110,17 +110,18 @@ function lotLamps() {
   }
   return out;
 }
-// EV charger at the back of a bay; a cable and a pulse when a car is plugged in
-function drawCharger(s) {
-  var bx = s.x + .18, by = s.row === 'N' ? s.y + .1 : s.y + .9;
+// EV charger at the back of a bay: the post is baked into the background, the cable to a plugged-in car pulses live
+function chargerAt(s) { return { x: s.x + .18, y: s.row === 'N' ? s.y + .1 : s.y + .9 }; }
+function drawChargerPost(s) {
+  var c = chargerAt(s), bx = c.x, by = c.y;
   prism(bx - .06, by - .05, 0, bx + .06, by + .05, 15, '#e9edf7');
   prism(bx - .07, by - .06, 15, bx + .07, by + .06, 18, '#2fae7c');
   var p = P(bx + .07, by, 10);
   ctx.fillStyle = '#ffd04a'; ctx.beginPath(); ctx.moveTo(p.x + 1, p.y - 4); ctx.lineTo(p.x - 2, p.y + .5); ctx.lineTo(p.x, p.y + .5); ctx.lineTo(p.x - 1, p.y + 4); ctx.lineTo(p.x + 2, p.y - .5); ctx.lineTo(p.x, p.y - .5); ctx.closePath(); ctx.fill();
-  if (s.car && s.car.state === 'parked') {
-    var cp = P(s.car.x, s.car.y, 8), on = REDUCE ? 1 : .6 + .4 * Math.sin(S.t * 5 + s.x);
-    ctx.globalAlpha = on; line(p, cp, 1.6, '#2fae7c'); ctx.globalAlpha = 1;
-  }
+}
+function drawCable(s) {
+  var c = chargerAt(s), p = P(c.x + .07, c.y, 10), cp = P(s.car.x, s.car.y, 8), on = REDUCE ? 1 : .6 + .4 * Math.sin(S.t * 5 + s.x);
+  ctx.globalAlpha = on; line(p, cp, 1.6, '#2fae7c'); ctx.globalAlpha = 1;
 }
 function drawBillboard() {
   var x = -11.2, y = 9.2;
@@ -170,8 +171,14 @@ function drawGarageCars(d, z0) {
     if (!s || !s.car) continue;
     var p = slotPos(j);
     if (d === 0 && j >= 1 && j <= 3) continue;   // the ground-floor doorway
-    ZOFF = z0 + 4; drawCar({ x: p.x, y: p.y, ang: p.a, type: s.type || 'sedan', color: s.color, id: j, moving: false }); ZOFF = 0;
+    ZOFF = z0 + 4; carLite(p.x, p.y, p.a, s.type, s.color); ZOFF = 0;
   }
+}
+// cars seen through the garage openings: just body and cabin, they are small and half hidden
+function carLite(x, y, a, type, col) {
+  var m = CARS[type] || CARS.sedan, hl = m.L / 2, hw = m.W / 2, ca = Math.cos(a), sa = Math.sin(a);
+  obox(x, y, a, hl, hw, 2, 2 + m.b, .97, .93, 0, col, function () { return col; });
+  obox(x + ca * m.co * m.L, y + sa * m.co * m.L, a, hl * m.cl, hw * m.cw, 2 + m.b, 2 + m.b + m.ch, .74, .8, 0, shade(col, 1.08), function () { return '#9ad4ff'; });
 }
 function drawDeck(d, z0, top) {
   var x, y;

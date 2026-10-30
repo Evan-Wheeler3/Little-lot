@@ -416,3 +416,11 @@ a.buy { text-decoration: none; }
   #perk-hustle, .card.up[id^="perk-"] > .nnw { grid-row: 2; }
   .card.up[id^="perk-"] > .buy { grid-row: 2; }
 }
+
+/* --- screen effects as cheap CSS layers instead of full-screen canvas fills --- */
+.stage { --bg0: #a9e585; --bg1: #8bd566; }
+.fade { position: absolute; left: 0; right: 0; pointer-events: none; }
+.fade.top { top: 0; height: 190px; background: linear-gradient(var(--bg0), transparent); opacity: .78; }
+.fade.bot { bottom: 0; height: 170px; background: linear-gradient(transparent, var(--bg1)); opacity: .8; }
+.hglow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(ellipse at center, rgba(255,140,190,0) 45%, rgba(255,140,190,.32) 100%); }
