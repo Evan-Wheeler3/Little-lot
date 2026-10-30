@@ -14,3 +14,22 @@ alter table public.saves enable row level security;
 create policy "read own save"   on public.saves for select to authenticated using (auth.uid() = user_id);
 create policy "create own save" on public.saves for insert to authenticated with check (auth.uid() = user_id);
 create policy "update own save" on public.saves for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Let players delete their own account from inside the game (required by the App Store).
+-- Deleting the auth user also deletes their save, through the "on delete cascade" above.
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke execute on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

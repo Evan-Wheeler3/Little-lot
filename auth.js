@@ -69,6 +69,8 @@ function friendly(r) {
   return 'Something went wrong. Please try again.';
 }
 var NETWORK = 'Cannot reach the server. Check your connection and try again.';
+// email links must open a web page: inside the app (capacitor://) use the published site from config.js
+function siteUrl() { return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : (CFG.SITE_URL || ''); }
 
 /* ---------- cloud save ---------- */
 function setStatus(s) { status = s; if (ui) ui.refresh(); }
@@ -146,19 +148,37 @@ function signOut() {
   var p = isDirty && session ? flush(false) : Promise.resolve();
   return p.then(function () { if (tok) api('/auth/v1/logout', { method: 'POST', token: tok }).catch(function () { /* best effort */ }); done(); }, done);
 }
+// overwrite the cloud copy no matter how much progress it holds (used by Reset progress)
+function forcePush() {
+  if (!session || !game) return Promise.resolve();
+  var snap = game.snapshot();
+  return fresh().then(function (t) {
+    return api('/rest/v1/saves?on_conflict=user_id', { method: 'POST', token: t, headers: { Prefer: 'resolution=merge-duplicates' },
+      body: { user_id: session.user.id, data: snap, lifetime: +snap.lifetime || 0, updated_at: new Date().toISOString() } });
+  }).then(function () { isDirty = false; lastSaved = Date.now(); setStatus('ok'); }, function () { setStatus('offline'); });
+}
+// App Store rule 5.1.1(v): accounts made in the app can be deleted in the app. The delete_my_account function is in supabase.sql.
+function deleteAccount() {
+  var key = slotKey();
+  return fresh().then(function (t) { return api('/rest/v1/rpc/delete_my_account', { method: 'POST', token: t, body: {} }); }).then(function (r) {
+    if (!r.ok) throw new Error('delete ' + r.status);
+    lsDel(key); storeSession(null); isDirty = false; setStatus('guest');
+    game.load(GUEST_KEY);
+  });
+}
 document.addEventListener('visibilitychange', function () {
   if (document.hidden && session && isDirty && game && session.expires_at - 30 > Date.now() / 1000) { pushing = false; flush(true); }
 });
 
 /* ---------- interface ---------- */
 var $ = function (id) { return document.getElementById(id); };
-var modal = $('acctModal'), views = ['vGuest', 'vUser', 'vReset', 'vCheck', 'vOff'], mode = 'login', view = 'vGuest', busy = false, toastT = 0, lastFocus = null;
+var modal = $('acctModal'), views = ['vGuest', 'vUser', 'vDelete', 'vReset', 'vCheck', 'vOff'], mode = 'login', view = 'vGuest', busy = false, toastT = 0, lastFocus = null;
 
 function show(v) {
   view = v;
   views.forEach(function (id) { $(id).hidden = id !== v; });
-  $('guestBtn').hidden = v === 'vReset';
-  $('acctTitle').textContent = v === 'vUser' ? 'Your account' : v === 'vReset' ? 'New password' : v === 'vCheck' ? 'Check your email' : v === 'vOff' ? 'Account' : (mode === 'signup' ? 'Create account' : 'Log in');
+  $('guestBtn').hidden = v === 'vReset' || v === 'vDelete';
+  $('acctTitle').textContent = v === 'vUser' ? 'Your account' : v === 'vDelete' ? 'Delete account' : v === 'vReset' ? 'New password' : v === 'vCheck' ? 'Check your email' : v === 'vOff' ? 'Account' : (mode === 'signup' ? 'Create account' : 'Log in');
 }
 function setMode(m) {
   mode = m;
@@ -220,7 +240,7 @@ function onAuth(ev) {
   setErr('authErr', ''); setBusy(true, 'authGo');
   var signup = mode === 'signup';
   var req = signup
-    ? api('/auth/v1/signup?redirect_to=' + encodeURIComponent(location.origin + location.pathname), { method: 'POST', body: { email: email, password: pass } })
+    ? api('/auth/v1/signup' + (siteUrl() ? '?redirect_to=' + encodeURIComponent(siteUrl()) : ''), { method: 'POST', body: { email: email, password: pass } })
     : api('/auth/v1/token?grant_type=password', { method: 'POST', body: { email: email, password: pass } });
   req.then(function (r) {
     var j = r.json || {};
@@ -239,7 +259,7 @@ function onForgot() {
   var email = $('authEmail').value.trim().toLowerCase();
   if (!validEmail(email)) return setErr('authErr', 'Type your email above first, then tap Forgot password.');
   setErr('authErr', '');
-  api('/auth/v1/recover?redirect_to=' + encodeURIComponent(location.origin + location.pathname), { method: 'POST', body: { email: email } })
+  api('/auth/v1/recover' + (siteUrl() ? '?redirect_to=' + encodeURIComponent(siteUrl()) : ''), { method: 'POST', body: { email: email } })
     .then(function (r) {
       if (!r.ok) return setErr('authErr', friendly(r));
       $('checkNote').textContent = 'If ' + email + ' has an account, we sent a link to reset the password.';
@@ -294,12 +314,21 @@ $('resetForm').addEventListener('submit', onReset);
 $('checkBack').addEventListener('click', function () { setMode('login'); show('vGuest'); });
 $('saveNow').addEventListener('click', function () { isDirty = true; flush(false).then(refreshUi); });
 $('logoutBtn').addEventListener('click', function () { closeModal(); signOut().then(refreshUi); });
+$('delBtn').addEventListener('click', function () { setErr('delErr', ''); show('vDelete'); });
+$('delBack').addEventListener('click', function () { show('vUser'); refreshUi(); });
+$('delGo').addEventListener('click', function () {
+  if (busy) return;
+  setErr('delErr', ''); setBusy(true, 'delGo');
+  deleteAccount().then(function () { setBusy(false, 'delGo'); closeModal(); show('vGuest'); refreshUi(); toast('Your account and cloud save are deleted.'); },
+    function () { setBusy(false, 'delGo'); setErr('delErr', 'Could not delete the account. Check your connection and try again.'); });
+});
 setMode('login'); show(ENABLED ? 'vGuest' : 'vOff');
 readHash();
 
 window.LLAuth = {
   slotKey: slotKey,
   dirty: dirty,
+  reset: function () { if (session) forcePush(); },
   attach: function (g) {
     game = g;
     refreshUi();

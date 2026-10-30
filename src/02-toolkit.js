@@ -27,6 +27,43 @@ function prism(x0, y0, z0, x1, y1, z1, c) {
   poly([P(x1, y1, z1), P(x1, y0, z1), P(x1, y0, z0), P(x1, y1, z0)], shade(c, FR));
   poly([P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)], shade(c, FT));
 }
+// oriented box for things that turn (cars): centre cx,cy, heading ang, half length hl, half width hw.
+// The top can shrink (tl, tw) and slide along the heading (off). side(i) picks a colour per face: 0 front, 1 left, 2 back, 3 right.
+var OB_SX = [1, 1, -1, -1], OB_SY = [-1, 1, 1, -1];
+function obox(cx, cy, ang, hl, hw, z0, z1, tl, tw, off, top, side) {
+  var ca = Math.cos(ang), sa = Math.sin(ang), b = [], t = [], i, fs = [];
+  for (i = 0; i < 4; i++) {
+    var u = OB_SX[i] * hl, v = OB_SY[i] * hw, ut = off + OB_SX[i] * hl * tl, vt = OB_SY[i] * hw * tw;
+    b.push({ x: cx + ca * u - sa * v, y: cy + sa * u + ca * v }); t.push({ x: cx + ca * ut - sa * vt, y: cy + sa * ut + ca * vt });
+  }
+  for (i = 0; i < 4; i++) {
+    var j = (i + 1) % 4, nx = (b[i].x + b[j].x) / 2 - cx, ny = (b[i].y + b[j].y) / 2 - cy, l = Math.hypot(nx, ny) || 1;
+    nx /= l; ny /= l;
+    if (nx + ny <= 0.02) continue;   // faces away from the camera
+    var px = Math.max(0, nx), py = Math.max(0, ny), k = (FR * px + FL * py) / (px + py);
+    fs.push({ d: nx + ny, i: i, j: j, k: k });
+  }
+  fs.sort(function (p, q) { return p.d - q.d; });
+  fs.forEach(function (f) {
+    var face = f.i === 0 ? 0 : f.i === 1 ? 1 : f.i === 2 ? 2 : 3;
+    poly([P(b[f.i].x, b[f.i].y, z0), P(b[f.j].x, b[f.j].y, z0), P(t[f.j].x, t[f.j].y, z1), P(t[f.i].x, t[f.i].y, z1)], shade(side(face), f.k));
+  });
+  poly([P(t[0].x, t[0].y, z1), P(t[1].x, t[1].y, z1), P(t[2].x, t[2].y, z1), P(t[3].x, t[3].y, z1)], shade(top, FT));
+  return b;
+}
+// a point on a turned car: along the heading by u, across by v
+function orel(cx, cy, ang, u, v) { var ca = Math.cos(ang), sa = Math.sin(ang); return { x: cx + ca * u - sa * v, y: cy + sa * u + ca * v }; }
+function mix(a, b, t) {
+  var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16);
+  var r = (x >> 16) + ((y >> 16) - (x >> 16)) * t, g = ((x >> 8) & 255) + (((y >> 8) & 255) - ((x >> 8) & 255)) * t, bl = (x & 255) + ((y & 255) - (x & 255)) * t;
+  return '#' + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(bl)).toString(16).slice(1);
+}
+// soft light for the night pass (drawn with 'lighter')
+function glow(x, y, r, col, a) {
+  var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1;
+}
 // tapered box: base rectangle at z0, smaller top rectangle at z1 (optionally shifted by tx,ty)
 function frustum(cx, cy, w, d, w2, d2, z0, z1, tx, ty, cT, cL, cR) {
   var a0 = cx - w / 2, a1 = cx + w / 2, b0 = cy - d / 2, b1 = cy + d / 2;

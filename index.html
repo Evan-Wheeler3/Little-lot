@@ -2,49 +2,79 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#a9e585">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Little Lot">
+<meta name="format-detection" content="telephone=no">
 <title>Little Lot</title>
-<meta name="description" content="A cozy isometric parking garage idle tycoon.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='6' width='52' height='52' rx='14' fill='%233d8bff' stroke='%233b2f5c' stroke-width='5'/%3E%3Ctext x='32' y='46' font-family='Arial' font-weight='bold' font-size='38' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<meta name="description" content="A cozy isometric parking lot idle tycoon. Tap to hustle, build a garage, franchise across the map.">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="assets/fonts/fredoka-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="app">
   <div class="stage" id="stage">
-    <canvas id="scene" role="img" aria-label="Isometric parking lot with cartoon cars arriving, parking and paying"></canvas>
+    <canvas id="scene" role="img" aria-label="Isometric parking lot with cartoon cars arriving, parking and paying. Tap to make everyone hurry."></canvas>
   </div>
 
   <header class="hud">
     <div class="hud-in">
       <div class="left">
         <div class="brand"><span class="pbadge" aria-hidden="true">P</span><h1>Little Lot</h1></div>
-        <div class="pill star" id="starPill" hidden title="Franchise stars boost all income"><span class="si" aria-hidden="true">&#9733;</span><b id="stars">0</b></div>
+        <div class="chips">
+          <button class="pill gem" id="gemPill" type="button" aria-label="Gems. Open the shop"><i class="gi" aria-hidden="true"></i><b id="gems">0</b></button>
+          <div class="pill star" id="starPill" hidden title="Franchise stars boost all income"><span class="si" aria-hidden="true">&#9733;</span><b id="stars">0</b></div>
+        </div>
       </div>
       <div class="money">
         <div class="pill big" id="moneyPill"><span class="coin" aria-hidden="true">$</span><b id="money">25</b></div>
         <span class="rate" id="rate">$0.0/s</span>
+        <span class="boost" id="boostChip" hidden>x2 income <b id="boostT"></b></span>
       </div>
       <div class="right">
         <div class="pill parked"><span class="lbl">Parked</span><b id="parked">0 / 8</b></div>
-        <button class="acct" id="acctBtn" type="button" aria-label="Account" title="Account">
-          <svg class="acct-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>
-          <span class="acct-l" id="acctLetter" hidden></span><i class="acct-dot" id="acctDot" hidden></i>
-        </button>
+        <div class="rbtns">
+          <button class="rnd" id="dailyBtn" type="button" aria-label="Daily gift" title="Daily gift">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M3 9h18M12 9v11M12 9c-1.5-3-5-4-5-1.5S12 9 12 9zM12 9c1.5-3 5-4 5-1.5S12 9 12 9z"/></svg>
+            <i class="acct-dot" id="dailyDot" hidden></i>
+          </button>
+          <button class="rnd" id="settingsBtn" type="button" aria-label="Settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5"/></svg>
+          </button>
+          <button class="acct" id="acctBtn" type="button" aria-label="Account" title="Account">
+            <svg class="acct-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>
+            <span class="acct-l" id="acctLetter" hidden></span><i class="acct-dot" id="acctDot" hidden></i>
+          </button>
+        </div>
       </div>
     </div>
   </header>
 
   <button class="rush" id="rushBtn" type="button" hidden>Rush hour!</button>
+  <button class="recenter" id="recenter" type="button" aria-label="Back to the lot" title="Back to the lot" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/><circle cx="12" cy="12" r="7.5"/></svg>
+  </button>
 
   <footer class="dock">
+    <div class="tip" id="tip" role="status" aria-live="polite" hidden></div>
+    <div class="hype" id="hype" aria-hidden="true"><div class="hype-bar"><i id="hypeFill"></i></div><span id="hypeTxt">Tap the lot to hustle</span></div>
     <div class="dock-in">
+      <button class="side-btn" id="mapBtn" type="button" aria-label="Map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6zM9 4v14M15 6v14"/></svg><span>Map</span>
+      </button>
       <button class="open-btn" id="openBtn" type="button" aria-expanded="false" aria-controls="sheet">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6"/></svg>Upgrades
         <span class="badge" id="badge" hidden>0</span>
+      </button>
+      <button class="side-btn" id="shopBtn" type="button" aria-label="Shop">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14l-1 11H6zM9 9V7a3 3 0 016 0v2"/></svg><span>Shop</span>
+        <i class="acct-dot" id="shopDot" hidden></i>
       </button>
     </div>
   </footer>
@@ -57,10 +87,11 @@
       <button class="close" id="closeBtn" type="button" aria-label="Close upgrades"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="sheet-tools">
-      <div class="seg" id="tabs" role="tablist" aria-label="Upgrade categories">
+      <div class="seg tabs" id="tabs" role="tablist" aria-label="Upgrade categories">
         <button type="button" role="tab" data-tab="build" aria-selected="true">Build<span class="dot" hidden></span></button>
         <button type="button" role="tab" data-tab="speed" aria-selected="false">Speed<span class="dot" hidden></span></button>
         <button type="button" role="tab" data-tab="biz" aria-selected="false">Money<span class="dot" hidden></span></button>
+        <button type="button" role="tab" data-tab="staff" aria-selected="false">Staff<span class="dot" hidden></span></button>
         <button type="button" role="tab" data-tab="goals" aria-selected="false">Goals<span class="dot" hidden></span></button>
         <button type="button" role="tab" data-tab="fr" aria-selected="false">Stars<span class="dot" hidden></span></button>
       </div>
@@ -78,7 +109,17 @@
       <h2 id="welTitle">Welcome back!</h2>
       <p id="welText">Your lot kept earning while you were away.</p>
       <div class="amt"><span class="coin" aria-hidden="true">$</span><b id="welAmt">0</b></div>
-      <button class="buy" id="welBtn" type="button">Collect</button>
+      <p class="small" id="welTip" hidden></p>
+      <button class="buy" id="welX2" type="button">Collect x2</button>
+      <button class="buy ghost" id="welBtn" type="button">Collect</button>
+    </div>
+  </div>
+
+  <div class="modal" id="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle" hidden>
+    <div class="modal-card panel-card">
+      <div class="acct-head"><h2 id="panelTitle">Shop</h2>
+        <button class="close" id="panelClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="panel-body" id="panelBody"></div>
     </div>
   </div>
 
@@ -104,6 +145,7 @@
           <button class="buy" id="authGo" type="submit">Log in</button>
         </form>
         <button class="linkbtn" id="forgotBtn" type="button">Forgot password?</button>
+        <p class="note small">By creating an account you agree to the <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
       </div>
 
       <div class="acct-view" id="vUser" hidden>
@@ -112,6 +154,14 @@
         <button class="buy" id="saveNow" type="button">Save now</button>
         <button class="buy ghost" id="logoutBtn" type="button">Log out</button>
         <p class="note small">Logging out switches this device to a guest lot. Your account lot stays safe in the cloud.</p>
+        <button class="linkbtn danger" id="delBtn" type="button">Delete my account</button>
+      </div>
+
+      <div class="acct-view" id="vDelete" hidden>
+        <p class="note">This permanently deletes your account and its cloud save. It cannot be undone. Purchases made through the App Store stay with your Apple ID and can be restored on a new account.</p>
+        <p class="err" id="delErr" role="alert" hidden></p>
+        <button class="buy danger" id="delGo" type="button">Delete my account forever</button>
+        <button class="buy ghost" id="delBack" type="button">Keep my account</button>
       </div>
 
       <div class="acct-view" id="vReset" hidden>
@@ -139,5 +189,10 @@
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="game.js"></script>
+<script>
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && location.hostname !== 'localhost') {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
 </body>
 </html>

@@ -1,0 +1,26 @@
+{
+  "name": "little-lot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Little Lot: a cozy parking lot idle tycoon. Web game wrapped for iOS with Capacitor.",
+  "scripts": {
+    "build": "./build.sh",
+    "www": "./build.sh && node scripts/copy-www.js",
+    "ios": "npm run www && npx cap sync ios && npx cap open ios",
+    "sync": "npm run www && npx cap sync",
+    "serve": "python3 -m http.server 8000",
+    "sim": "node scripts/sim.js"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "cordova-plugin-purchase": "13.19.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}
