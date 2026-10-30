@@ -94,9 +94,9 @@ function econRate() {
   var fM = Math.min(D, capM), fG = Math.min(D - fM, capG);
   return (fM + fG * GAR_PAY) * (fee() / rushFee()) * (1 + tipRate());
 }
-var STAR_BASE = 40000;
-function starsTotal() { return Math.floor(Math.cbrt(S.lifetime / STAR_BASE)); }
-function starsGain() { return Math.max(0, starsTotal() - S.stars); }
+var STAR_BASE = 20000;
+// stars come from what this lot earned, so a stronger start means more stars from the next run
+function starsGain() { return Math.floor(Math.pow(S.totalRun / STAR_BASE, 0.25)); }
 function headStart() { return S.perk.head ? 200 * Math.pow(3, S.perk.head - 1) : 0; }
 
 /* ---------- save and load ---------- */
@@ -996,8 +996,8 @@ function perkHtml(k) {
 }
 function frHtml() {
   var gain = starsGain();
-  var base = Math.pow(starsTotal(), 3) * STAR_BASE, nxt = Math.pow(starsTotal() + 1, 3) * STAR_BASE;
-  var pct = Math.max(0, Math.min(100, (S.lifetime - base) / (nxt - base) * 100));
+  var base = Math.pow(starsGain(), 4) * STAR_BASE, nxt = Math.pow(starsGain() + 1, 4) * STAR_BASE;
+  var pct = Math.max(0, Math.min(100, (S.totalRun - base) / (nxt - base) * 100));
   var h = '<div class="fr"><h3><span style="color:#f0a300;-webkit-text-stroke:1.5px var(--ink)">&#9733;</span> Franchise</h3>' +
     '<p>Sell this lot and open a new one from scratch. Each star adds 35% to all income forever, you get a token per star to spend on perks, and every franchise lets you build 3 more garage floors.</p>' +
     '<div class="row"><div class="stat"><small>Stars</small>' + S.stars + '</div>' +
@@ -1053,9 +1053,9 @@ function updateFr() {
   var a = document.getElementById('fr-run'); if (!a) return;
   a.textContent = fmt(S.totalRun);
   document.getElementById('fr-gain').textContent = '+' + starsGain();
-  var base = Math.pow(starsTotal(), 3) * STAR_BASE, nxt = Math.pow(starsTotal() + 1, 3) * STAR_BASE;
-  document.getElementById('fr-bar').style.width = Math.max(0, Math.min(100, (S.lifetime - base) / (nxt - base) * 100)) + '%';
-  document.getElementById('fr-note').textContent = 'Next star after $' + fmt(nxt) + ' earned in total (lifetime $' + fmt(S.lifetime) + ').';
+  var base = Math.pow(starsGain(), 4) * STAR_BASE, nxt = Math.pow(starsGain() + 1, 4) * STAR_BASE;
+  document.getElementById('fr-bar').style.width = Math.max(0, Math.min(100, (S.totalRun - base) / (nxt - base) * 100)) + '%';
+  document.getElementById('fr-note').textContent = 'Next star at $' + fmt(nxt) + ' earned in this lot. Stars come from each lot\'s own earnings, so every run is faster than the last.';
   var go = document.getElementById('fr-go');
   if (go) { var g = starsGain(); go.textContent = g < 1 ? 'Earn more to franchise' : 'Franchise now (+' + g + ' stars)'; }
 }

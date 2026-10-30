@@ -94,9 +94,9 @@ function econRate() {
   var fM = Math.min(D, capM), fG = Math.min(D - fM, capG);
   return (fM + fG * GAR_PAY) * (fee() / rushFee()) * (1 + tipRate());
 }
-var STAR_BASE = 40000;
-function starsTotal() { return Math.floor(Math.cbrt(S.lifetime / STAR_BASE)); }
-function starsGain() { return Math.max(0, starsTotal() - S.stars); }
+var STAR_BASE = 20000;
+// stars come from what this lot earned, so a stronger start means more stars from the next run
+function starsGain() { return Math.floor(Math.pow(S.totalRun / STAR_BASE, 0.25)); }
 function headStart() { return S.perk.head ? 200 * Math.pow(3, S.perk.head - 1) : 0; }
 
 /* ---------- save and load ---------- */
