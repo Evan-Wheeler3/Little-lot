@@ -7,7 +7,7 @@ var GDEF = {
   deck: { name: 'Sky high', tint: '#e3d9ff', tgt: function (t) { return t + 1; }, val: function () { return S.bestDeck; }, txt: function (n) { return 'Build garage floor ' + n; } },
   vip: { name: 'Meet and greet', tint: '#fff0a8', tgt: function (t) { return Math.round(3 * Math.pow(1.9, t)); }, val: function () { return S.vips; }, txt: function (n) { return 'Greet ' + n + ' golden cars'; } },
   wash: { name: 'Squeaky clean', tint: '#c7f0ff', tgt: function (t) { return Math.round(25 * Math.pow(2.4, t)); }, val: function () { return S.washes; }, txt: function (n) { return 'Wash ' + fmt(n) + ' cars'; } },
-  rush: { up: '+10s', name: 'Rush job', tint: '#ffc7bd', tgt: function (t) { return Math.round(2 * Math.pow(1.8, t)); }, val: function () { return S.rushes; }, txt: function (n) { return 'Ride out ' + n + ' rush hours'; } },
+  rush: { name: 'Rush job', tint: '#ffc7bd', tgt: function (t) { return Math.round(2 * Math.pow(1.8, t)); }, val: function () { return S.rushes; }, txt: function (n) { return 'Ride out ' + n + ' rush hours'; } },
   fr: { name: 'Chain owner', tint: '#d6f0c8', tgt: function (t) { return t + 1; }, val: function () { return S.franchises; }, txt: function (n) { return 'Franchise ' + n + (n === 1 ? ' time' : ' times'); } }
 };
 var GORDER = ['cars', 'cash', 'fee', 'maxed', 'deck', 'vip', 'wash', 'rush', 'fr'];
@@ -42,23 +42,23 @@ function tickMeta(dt) {
 // the token shop: permanent upgrades bought with franchise tokens. Each says exactly what the next level does.
 var BLUE = ['Every new lot starts with 6 more columns of bays', '...and the road starts as a four-lane avenue', '...and one garage floor', '...and a car wash and 4 EV columns'];
 var PDEF = {
-  hustle: { up: '+x1 max', name: 'Hustle power', tint: '#ffc7e8', icon: 'tap', cost: function (l) { return Math.ceil(2 * Math.pow(1.5, l)); },
+  hustle: { big: function () { return ['x' + hustleCap(), 'max hustle']; }, up: '+1', name: 'Hustle power', tint: '#ffc7e8', icon: 'tap', cost: function (l) { return Math.ceil(2 * Math.pow(1.5, l)); },
     now: function () { return 'Full meter: x' + hustleCap() + ' income'; }, next: function () { return 'Full meter: x' + (hustleCap() + 1) + ' income'; } },
-  gold: { up: '+25%', name: 'Better rates', tint: '#ffe38a', icon: 'fee', cost: function (l) { return Math.ceil(2 * Math.pow(1.6, l)); },
+  gold: { big: function () { return ['+' + 25 * S.perk.gold + '%', 'all income']; }, up: '+25%', name: 'Better rates', tint: '#ffe38a', icon: 'fee', cost: function (l) { return Math.ceil(2 * Math.pow(1.6, l)); },
     now: function () { return 'All income +' + 25 * S.perk.gold + '%'; }, next: function () { return 'All income +' + 25 * (S.perk.gold + 1) + '%'; } },
-  tap: { up: '+1% a tap', name: 'Quick fingers', tint: '#ffd9c7', icon: 'tap', cost: function (l) { return Math.ceil(2 * Math.pow(1.6, l)); },
+  tap: { big: function () { return [(tapPower() * 100).toFixed(1) + '%', 'meter per tap']; }, up: '+1%', name: 'Quick fingers', tint: '#ffd9c7', icon: 'tap', cost: function (l) { return Math.ceil(2 * Math.pow(1.6, l)); },
     now: function () { return 'Each tap fills ' + (tapPower() * 100).toFixed(1) + '% of the meter'; }, next: function () { return 'Each tap fills ' + (5 * (1 + 0.2 * (S.perk.tap + 1))).toFixed(1) + '%'; } },
-  head: { up: 'x3 cash', name: 'Head start', tint: '#d6f0c8', icon: 'space', cost: function (l) { return Math.ceil(Math.pow(3, l)); },
+  head: { big: function () { return ['$' + fmt(25 + headStart()), 'starting cash']; }, up: 'x3 cash', name: 'Head start', tint: '#d6f0c8', icon: 'space', cost: function (l) { return Math.ceil(Math.pow(3, l)); },
     now: function () { return 'New lots start with $' + fmt(25 + headStart()); }, next: function () { return 'New lots start with $' + fmt(25 + 200 * Math.pow(3, S.perk.head)); } },
-  lucky: { up: '+30%', name: 'Lucky drivers', tint: '#fff0a8', icon: 'goal', cost: function (l) { return Math.ceil(2 * Math.pow(1.75, l)); },
+  lucky: { big: function () { return ['x' + fmtX(1 + 0.3 * S.perk.lucky), 'golden car bonus']; }, up: '+30%', name: 'Lucky drivers', tint: '#fff0a8', icon: 'goal', cost: function (l) { return Math.ceil(2 * Math.pow(1.75, l)); },
     now: function () { return 'Golden cars x' + fmtX(1 + 0.3 * S.perk.lucky) + ' bonus'; }, next: function () { return 'x' + fmtX(1 + 0.3 * (S.perk.lucky + 1)) + ' bonus, and 20% more often'; } },
-  rush: { name: 'Rush master', tint: '#ffc7bd', icon: 'ads', cost: function (l) { return Math.ceil(2 * Math.pow(1.7, l)); },
+  rush: { big: function () { return [rushLen() + 's', 'rush hours']; }, up: '+10s', name: 'Rush master', tint: '#ffc7bd', icon: 'ads', cost: function (l) { return Math.ceil(2 * Math.pow(1.7, l)); },
     now: function () { return 'Rush hours last ' + rushLen() + 's'; }, next: function () { return rushLen() + 10 + 's, and they come 7% sooner'; } },
-  night: { up: '+2h', name: 'Night watch', tint: '#d9e4ff', icon: 'moon', cost: function (l) { return Math.ceil(1.5 * Math.pow(1.9, l)); },
+  night: { big: function () { return [Math.round(awayCap() / 3600) + 'h', 'away earning time']; }, up: '+2h', name: 'Night watch', tint: '#d9e4ff', icon: 'moon', cost: function (l) { return Math.ceil(1.5 * Math.pow(1.9, l)); },
     now: function () { return 'Earn while away for ' + Math.round(awayCap() / 3600) + 'h'; }, next: function () { return 'Earn while away for ' + Math.round(awayCap() / 3600 + 2 * (S.pass ? 2 : 1)) + 'h'; } },
-  sleep: { up: '+8%', name: 'Overnight rates', tint: '#e3d9ff', icon: 'moon', cost: function (l) { return Math.ceil(3 * Math.pow(2, l)); },
+  sleep: { big: function () { return [pct(awayRate()), 'away earnings']; }, up: '+8%', name: 'Overnight rates', tint: '#e3d9ff', icon: 'moon', cost: function (l) { return Math.ceil(3 * Math.pow(2, l)); },
     now: function () { return 'Away earnings at ' + pct(awayRate()); }, next: function () { return 'Away earnings at ' + pct(Math.min(1, awayRate() + .08)); } },
-  blue: { up: 'Next plan', name: 'Blueprints', tint: '#c9f2d9', icon: 'garage', cost: function (l) { return [3, 8, 20, 50][l] || Infinity; },
+  blue: { big: function () { return [S.perk.blue + '/4', 'blueprints']; }, up: '+1', name: 'Blueprints', tint: '#c9f2d9', icon: 'garage', cost: function (l) { return [3, 8, 20, 50][l] || Infinity; },
     now: function () { return S.perk.blue ? BLUE[S.perk.blue - 1] : 'New lots start from scratch'; }, next: function () { return BLUE[S.perk.blue] || ''; } }
 };
 var PORDER = ['hustle', 'gold', 'tap', 'head', 'lucky', 'rush', 'night', 'sleep', 'blue'];

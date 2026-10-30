@@ -85,13 +85,13 @@ function upPct(a, b) { return a > 0 ? '+' + Math.max(1, Math.round((b / a - 1) *
 function upLess(a, b) { return '-' + (a - b).toFixed(a - b < .1 ? 2 : 1) + 's'; }
 function upHire(f) { return function (a, b) { return a ? f(a, b) : 'Hire'; }; }
 var UPS = {
-  space: [function () { return activeSpots().length; }, upAdd(' bays')],
-  garage: [function () { return garCap(); }, upAdd(' bays')],
+  space: [function () { return activeSpots().length; }, upAdd('')],
+  garage: [function () { return garCap(); }, upAdd('')],
   wash: [function () { return S.lvl.wash ? washPrice() / rushFee() : 0; }, function (a, b) { return a ? upPct(a, b) : 'Opens'; }],
-  shop: [function () { return fee() / rushFee() * tipRate(); }, function (a, b) { return a ? upPct(a, b) : '+$' + fmtSmall(b) + ' tips'; }],
+  shop: [function () { return fee() / rushFee() * tipRate(); }, function (a, b) { return a ? upPct(a, b) : '+$' + fmtSmall(b); }],
   gate: [speedMul, upPct], walk: [walkSpeed, upPct], express: [visitAvg, upLess], valet: [doorTime, upLess],
   fee: [function () { return fee(); }, upPct], ads: [demand, upPct], rep: [function () { return repMul(); }, upPct],
-  ev: [function () { return Math.min(S.lvl.ev, builtCols()) * 2; }, upAdd(' bays')],
+  ev: [function () { return Math.min(S.lvl.ev, builtCols()) * 2; }, upAdd('')],
   concierge: [function () { return S.lvl.concierge ? vipMul() : 0; }, upHire(upPct)],
   promoter: [function () { return S.lvl.promoter ? rushLen() : 0; }, upHire(upAdd('s'))],
   crew: [function () { return 1 / drainRate(); }, upAdd('s', function (d) { return Math.round(d); })],
@@ -104,15 +104,34 @@ function showAt(k, l) { var o = S.lvl[k]; S.lvl[k] = l; if (k === 'garage') ensu
 // the next landmark on a line: a new row, building, road, lane, class of car or milestone doubling
 function landmark(k, l) {
   var i;
-  if (k === 'space') return 4 + l < 11 ? 'Level 7: a second row of bays' : 4 + l < 21 ? 'Level 17: a third row of bays' : '';
-  if (k === 'shop') for (i = 0; i < SHOP_TIERS.length; i++) if (SHOP_TIERS[i] > l) return 'Level ' + SHOP_TIERS[i] + ': grows into a ' + SHOP_NAMES[i].toLowerCase();
-  if (k === 'gate') { var R = [[5, 'a four-lane avenue'], [15, 'a boulevard'], [30, 'a six-lane highway']]; for (i = 0; i < 3; i++) if (R[i][0] > l) return 'Level ' + R[i][0] + ': ' + R[i][1]; }
-  if (k === 'rep') for (i = 0; i < REP_TIERS.length; i++) if (REP_TIERS[i] > l) return 'Level ' + REP_TIERS[i] + ': ' + CLASS_NAMES[i].toLowerCase() + ' arrive';
-  if (k === 'wash' && l < 50) { var w = l < 1 ? 1 : l < 10 ? 10 : l < 25 ? 25 : 50; if (l >= 1) return 'Level ' + w + ': another lane'; }
+  if (k === 'space') return 4 + l < 11 ? 'Lv 7 → 2nd row' : 4 + l < 21 ? 'Lv 17 → 3rd row' : '';
+  if (k === 'shop') for (i = 0; i < SHOP_TIERS.length; i++) if (SHOP_TIERS[i] > l) return 'Lv ' + SHOP_TIERS[i] + ' → ' + SHOP_NAMES[i];
+  if (k === 'gate') { var R = [[5, '4 lanes'], [15, 'Boulevard'], [30, 'Highway']]; for (i = 0; i < 3; i++) if (R[i][0] > l) return 'Lv ' + R[i][0] + ' → ' + R[i][1]; }
+  if (k === 'rep') for (i = 0; i < REP_TIERS.length; i++) if (REP_TIERS[i] > l) return 'Lv ' + REP_TIERS[i] + ' → ' + CLASS_NAMES[i];
+  if (k === 'wash' && l >= 1 && l < 50) return 'Lv ' + (l < 10 ? 10 : l < 25 ? 25 : 50) + ' → +1 lane';
   if (k === 'garage' && l >= maxDecks()) return 'Franchise to build higher';
-  if (ITEMS[k].ms) return 'Level ' + msNext(l) + ' doubles it';
+  if (ITEMS[k].ms) return 'Lv ' + msNext(l) + ' → x2';
   return '';
 }
+// the big number on each card, and the few words under it
+var BIG = {
+  space: function () { return [activeSpots().length, 'bays']; },
+  garage: function () { return S.lvl.garage ? [garCap(), 'garage bays'] : ['None', 'garage']; },
+  wash: function () { return S.lvl.wash ? ['$' + fmtSmall(washPrice() / rushFee()), 'per wash'] : ['None', 'car wash']; },
+  shop: function () { return ['$' + fmtSmall(fee() / rushFee() * tipRate()), 'tip per shopper']; },
+  gate: function () { return [pct(speedMul()), 'car speed']; },
+  walk: function () { return [pct(walkSpeed() / 0.8 / mod('walk', 1)), 'walk speed']; },
+  express: function () { return [visitAvg().toFixed(1) + 's', 'in the shop']; },
+  valet: function () { return [doorTime().toFixed(2) + 's', 'per car door']; },
+  fee: function () { return ['$' + fmtSmall(fee() / rushFee()), 'per car']; },
+  ads: function () { return [Math.round(demand() / (S.rush > 0 ? 2.5 : 1) * 60), 'drivers a minute']; },
+  rep: function () { return ['x' + fmtX(repMul()), CLASS_NAMES[repTier()].toLowerCase()]; },
+  ev: function () { return [Math.min(S.lvl.ev, builtCols()) * 2, 'charging bays']; },
+  concierge: function () { return S.lvl.concierge ? ['x' + fmtX(vipMul()), 'golden car bonus'] : ['Off', 'greets golden cars']; },
+  promoter: function () { return S.lvl.promoter ? [rushLen() + 's', 'auto rush hours'] : ['Off', 'starts rush hours']; },
+  crew: function () { return [Math.round(1 / drainRate()) + 's', 'full meter lasts']; },
+  manager: function () { return [pct(awayRate()), 'away earnings']; }
+};
 var TABS = { build: ['space', 'garage', 'wash', 'shop'], speed: ['gate', 'walk', 'express', 'valet'], biz: ['fee', 'ads', 'rep', 'ev'], staff: ['concierge', 'promoter', 'crew', 'manager'] };
 var TABNOTE = {
   build: 'Grow the place. Drivers use the lot first, then the garage. When both are full, cars queue on the road and give up.',
@@ -157,13 +176,14 @@ function btnHtml(k) {
   if (p.maxed) return k === 'garage' ? 'Franchise for more' : k === 'ev' && S.lvl.ev < MAXL.ev ? 'Build more bays' : 'Maxed';
   return '<span class="c">$</span>' + fmt(p.cost) + (p.n > 1 ? ' <small>x' + p.n + '</small>' : '');
 }
-function statLine(now, up) { return '<p class="stat">' + now + (up ? ' <b class="up">' + up + '</b>' : '') + '</p>'; }
+function bigStat(v, unit, up) {
+  return '<div class="big"><b>' + v + '</b>' + (up ? '<span class="up">' + up + '</span>' : '') + '<small>' + unit + '</small></div>';
+}
+function cardStat(k, n) { var b = BIG[k](); return bigStat(b[0], b[1], n ? upText(k, n) : ''); }
 function cardHtml(k) {
-  var it = ITEMS[k], l = it.lvl(), mx = it.max(), p = plan(k, S.qty), maxed = l >= mx;
-  var lm = landmark(k, l);
-  return '<article class="card up" id="card-' + k + '"><h3><span class="ico" style="background:' + it.tint + '">' + ICON[it.icon] + '</span>' + it.name + '<span class="lv">Lv ' + l + '</span></h3>' +
-    '<p class="what">' + it.what + '</p>' +
-    '<div class="nnw" id="nn-' + k + '">' + statLine(it.show(), maxed ? '' : upText(k, Math.max(1, p.n || 1))) + '</div>' +
+  var it = ITEMS[k], l = it.lvl(), mx = it.max(), p = plan(k, S.qty), maxed = l >= mx, lm = landmark(k, l);
+  return '<article class="card up" id="card-' + k + '" title="' + it.what + '"><h3><span class="ico" style="background:' + it.tint + '">' + ICON[it.icon] + '</span>' + it.name + '<span class="lv">Lv ' + l + '</span></h3>' +
+    '<div class="nnw" id="nn-' + k + '">' + cardStat(k, maxed ? 0 : Math.max(1, p.n || 1)) + '</div>' +
     (lm ? '<p class="lm">' + lm + '</p>' : '') +
     '<button class="buy" type="button" data-up="' + k + '" id="buy-' + k + '">' + btnHtml(k) + '</button></article>';
 }
@@ -175,9 +195,9 @@ function goalHtml(k) {
     '<button class="buy" type="button" data-goal="' + k + '"' + (ok ? '' : ' disabled') + '>' + (ok ? 'Claim $' + fmt(goalCash()) + ' +' + GOAL_GEMS + '<i class="gi"></i>' : 'Keep going') + '</button></article>';
 }
 function perkHtml(k) {
-  var d = PDEF[k], c = d.cost(S.perk[k]), maxed = S.perk[k] >= PMAX[k];
+  var d = PDEF[k], c = d.cost(S.perk[k]), maxed = S.perk[k] >= PMAX[k], b = d.big();
   return '<article class="card up" id="perk-' + k + '"><h3><span class="ico" style="background:' + d.tint + '">' + ICON[d.icon] + '</span>' + d.name + '<span class="lv">Lv ' + S.perk[k] + (isFinite(PMAX[k]) ? '/' + PMAX[k] : '') + '</span></h3>' +
-    '<div class="nnw">' + statLine(d.now(), maxed ? '' : d.up) + '</div>' +
+    '<div class="nnw">' + bigStat(b[0], b[1], maxed ? '' : d.up) + '</div>' +
     '<button class="buy" type="button" data-perk="' + k + '"' + (!maxed && S.tok >= c ? '' : ' disabled') + '>' + (maxed ? 'Maxed' : c + ' <i class="tk"></i>') + '</button></article>';
 }
 function frHtml() {
@@ -204,7 +224,7 @@ function buildTray() {
   else if (S.tab === 'goals') { h += '<p class="tabnote">' + TABNOTE.goals + '</p>'; GORDER.forEach(function (k) { h += goalHtml(k); }); }
   else {
     if (S.tut === 3) h += '<p class="tutnote">Tap a yellow button to buy. Every upgrade makes the lot earn more.</p>';
-    h += '<p class="tabnote">' + TABNOTE[S.tab] + '</p>'; TABS[S.tab].forEach(function (k) { h += cardHtml(k); });
+    TABS[S.tab].forEach(function (k) { h += cardHtml(k); });
   }
   tray.innerHTML = h;
   qtyEl.hidden = S.tab === 'fr' || S.tab === 'goals';
@@ -223,7 +243,7 @@ function refreshTray() {
     var html = btnHtml(k); if (b.innerHTML !== html) b.innerHTML = html;
     if (S.qty !== 1 && b.dataset.n !== String(p.n)) {   // buying several: show where that many levels gets you
       b.dataset.n = p.n; var nn = document.getElementById('nn-' + k), it = ITEMS[k];
-      if (nn && !p.maxed) nn.innerHTML = statLine(it.show(), upText(k, Math.max(1, p.n)));
+      if (nn && !p.maxed) nn.innerHTML = cardStat(k, Math.max(1, p.n));
     }
   });
   var frReady = starsGain() > 0, gr = goalsReady();

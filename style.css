@@ -429,3 +429,11 @@ a.buy { text-decoration: none; }
 .card .stat { margin: 0; font: 700 14px/1.25 var(--font-display); color: var(--ink); }
 .card .stat .up { font: 700 14px/1 var(--font-display); color: #1f9a58; background: #e3f8e6; border-radius: 7px; padding: 2px 6px; white-space: nowrap; }
 .card .nnw { align-self: center; }
+
+/* at-a-glance upgrade cards: name, one big number, its gain, the price */
+.card.up { gap: 4px; padding: 9px 11px 10px; }
+.card .big { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 7px; }
+.card .big b { font: 700 27px/1 var(--font-display); color: var(--ink); white-space: nowrap; }
+.card .big .up { justify-self: start; font: 700 15px/1 var(--font-display); color: #1f9a58; background: #e3f8e6; border-radius: 8px; padding: 3px 7px; white-space: nowrap; }
+.card .big small { grid-column: 1 / -1; font: 800 11.5px/1.2 var(--font-body); letter-spacing: .02em; color: var(--muted); }
+.card .lm { font: 800 11px/1.2 var(--font-body); color: #b0700a; }
