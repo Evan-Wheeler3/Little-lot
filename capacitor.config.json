@@ -2,16 +2,26 @@
   "appId": "com.littlelot.game",
   "appName": "Little Lot",
   "webDir": "www",
-  "backgroundColor": "#a9e585",
+  "backgroundColor": "#1691fe",
   "ios": {
     "contentInset": "never",
     "scrollEnabled": false,
-    "backgroundColor": "#a9e585",
+    "backgroundColor": "#1691fe",
     "preferredContentMode": "mobile"
   },
   "plugins": {
-    "SplashScreen": { "launchShowDuration": 600, "launchAutoHide": true, "backgroundColor": "#a9e585", "showSpinner": false },
-    "StatusBar": { "style": "LIGHT", "overlaysWebView": true },
-    "LocalNotifications": { "iconColor": "#3d8bff" }
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "launchAutoHide": true,
+      "backgroundColor": "#1691fe",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "overlaysWebView": true
+    },
+    "LocalNotifications": {
+      "iconColor": "#3d8bff"
+    }
   }
 }
