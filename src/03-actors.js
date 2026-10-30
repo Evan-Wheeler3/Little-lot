@@ -41,7 +41,7 @@ function facePoly(cx, cy, a, u, v0, v1, z0, z1, col) {
 function drawCar(c) {
   var m = CARS[c.type] || CARS.sedan, a = c.ang, L = m.L, W = m.W, hl = L / 2, hw = W / 2, i;
   var bob = (c.moving && !REDUCE) ? Math.sin(S.t * 16 + c.id) * .7 : 0, zb = 3 + bob;
-  var al = 1;
+  var al = Math.max(0, Math.min(1, (c.x - SPAWNX) / 1.5, (DESPAWNX - c.x) / 1.5));   // fade in and out at the ends of the road
   if (c.g) al = Math.min(al, Math.max(0, Math.min(1, (c.y - GY1 + .05) / .9)));   // drive into / out of the garage doorway
   if (c.inWash) al = Math.min(al, Math.max(0, Math.min(1, (WX0 + .3 - c.x) / .5, (c.x - WX1 + .3) / .5)));
   if (al <= 0) return;
@@ -169,19 +169,12 @@ function drawHouseGround(d) {
 }
 function drawHouse(d) {
   var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, h = d.h, r = d.r, c = d.c;
-  if (d.garage) {   // attached single garage on the east side, lower flat roof
-    var gx0 = x1, gx1 = x1 + .75, gy0 = y1 - .85;
-    prism(gx0, gy0, 0, gx1, y1, 14, shade(c, .97));
-    poly([P(gx0 + .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 11), P(gx0 + .1, y1 + .005, 11)], '#e9edf7', null, 0);
-    for (var k = 1; k < 4; k++) line(P(gx0 + .1, y1 + .006, k * 2.8), P(gx1 - .1, y1 + .006, k * 2.8), 1, 'rgba(120,120,150,.5)', 'butt');
-    roofFlat(gx0, gy0, gx1, y1, 14, r);
-  }
   if (d.kind === 'ell') {   // a wing sticking out to the front on the west side
     var wx1 = x0 + d.w * .48, wy1 = y1 + .9;
     houseBox(x0, y0, x1, y1, h, c, d.face, 1, false);
     roofGableX(x0, y0, x1, y1, h, d.d * 11, r, c);
     houseBox(x0, y1, wx1, wy1, h, shade(c, 1.02), 'S', 1, true);
-    roofGableY(x0, y1 - .2, wx1, wy1, h, (wx1 - x0) * 11, r, c);
+    roofGableY(x0, y1, wx1, wy1, h - 1, (wx1 - x0) * 9, r, c);
   } else {
     var rows = d.kind === 'two' ? 2 : 1;
     houseBox(x0, y0, x1, y1, h, c, d.face, rows, true);
@@ -190,7 +183,20 @@ function drawHouse(d) {
     else if (d.ridge === 'y') roofGableY(x0, y0, x1, y1, h, d.w * 11, r, c);
     else roofGableX(x0, y0, x1, y1, h, d.d * 11, r, c);
   }
-  if (d.chimney && d.kind !== 'flat') prism(x0 + d.w * .22, y0 + d.d * .3, h, x0 + d.w * .22 + .2, y0 + d.d * .3 + .2, h + (d.kind === 'hip' ? 16 : d.d * 11 + 4), shade(c, .8));
+  if (d.chimney && d.kind !== 'flat' && d.kind !== 'ell') {   // on the slope facing the camera, rising from the roof surface
+    var cx, cy, cz;
+    if (d.ridge === 'y' && d.kind !== 'hip') { cx = x0 + d.w * .7; cy = y0 + d.d * .35; cz = h + d.w * 11 * (1 - Math.abs(cx + .1 - (x0 + x1) / 2) / (d.w / 2)); }
+    else { var rh2 = d.kind === 'hip' ? Math.min(d.w, d.d) * 9 : d.d * 11; cx = x0 + d.w * .28; cy = y0 + d.d * .62; cz = h + rh2 * (1 - Math.abs(cy + .1 - (y0 + y1) / 2) / (d.d / 2)); }
+    prism(cx, cy, cz - 2, cx + .2, cy + .2, cz + 8, shade(c, .8)); prism(cx - .03, cy - .03, cz + 8, cx + .23, cy + .23, cz + 9.5, shade(c, .65));
+  }
+  if (d.garage) {   // attached single garage on the east side, lower flat roof
+    var gx0 = x1, gx1 = x1 + .75, gy0 = y1 - .85;
+    prism(gx0, gy0, 0, gx1, y1, 14, shade(c, .97));
+    poly([P(gx0 + .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 11), P(gx0 + .1, y1 + .005, 11)], '#e9edf7', null, 0);
+    for (var k = 1; k < 4; k++) line(P(gx0 + .1, y1 + .006, k * 2.8), P(gx1 - .1, y1 + .006, k * 2.8), 1, 'rgba(120,120,150,.5)', 'butt');
+    roofFlat(gx0, gy0, gx1, y1, 14, r);
+  }
+
   if (d.porch && d.face !== 'E' && d.kind !== 'ell') {   // a little roof on posts over the front door
     var px = x0 + d.w * .5;
     prism(px - .3, y1 + .3, 0, px - .26, y1 + .34, 12, '#f4f1ea'); prism(px + .26, y1 + .3, 0, px + .3, y1 + .34, 12, '#f4f1ea');

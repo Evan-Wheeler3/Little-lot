@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.5';
+var VERSION = '1.1.6';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -434,7 +434,7 @@ function facePoly(cx, cy, a, u, v0, v1, z0, z1, col) {
 function drawCar(c) {
   var m = CARS[c.type] || CARS.sedan, a = c.ang, L = m.L, W = m.W, hl = L / 2, hw = W / 2, i;
   var bob = (c.moving && !REDUCE) ? Math.sin(S.t * 16 + c.id) * .7 : 0, zb = 3 + bob;
-  var al = 1;
+  var al = Math.max(0, Math.min(1, (c.x - SPAWNX) / 1.5, (DESPAWNX - c.x) / 1.5));   // fade in and out at the ends of the road
   if (c.g) al = Math.min(al, Math.max(0, Math.min(1, (c.y - GY1 + .05) / .9)));   // drive into / out of the garage doorway
   if (c.inWash) al = Math.min(al, Math.max(0, Math.min(1, (WX0 + .3 - c.x) / .5, (c.x - WX1 + .3) / .5)));
   if (al <= 0) return;
@@ -562,19 +562,12 @@ function drawHouseGround(d) {
 }
 function drawHouse(d) {
   var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, h = d.h, r = d.r, c = d.c;
-  if (d.garage) {   // attached single garage on the east side, lower flat roof
-    var gx0 = x1, gx1 = x1 + .75, gy0 = y1 - .85;
-    prism(gx0, gy0, 0, gx1, y1, 14, shade(c, .97));
-    poly([P(gx0 + .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 11), P(gx0 + .1, y1 + .005, 11)], '#e9edf7', null, 0);
-    for (var k = 1; k < 4; k++) line(P(gx0 + .1, y1 + .006, k * 2.8), P(gx1 - .1, y1 + .006, k * 2.8), 1, 'rgba(120,120,150,.5)', 'butt');
-    roofFlat(gx0, gy0, gx1, y1, 14, r);
-  }
   if (d.kind === 'ell') {   // a wing sticking out to the front on the west side
     var wx1 = x0 + d.w * .48, wy1 = y1 + .9;
     houseBox(x0, y0, x1, y1, h, c, d.face, 1, false);
     roofGableX(x0, y0, x1, y1, h, d.d * 11, r, c);
     houseBox(x0, y1, wx1, wy1, h, shade(c, 1.02), 'S', 1, true);
-    roofGableY(x0, y1 - .2, wx1, wy1, h, (wx1 - x0) * 11, r, c);
+    roofGableY(x0, y1, wx1, wy1, h - 1, (wx1 - x0) * 9, r, c);
   } else {
     var rows = d.kind === 'two' ? 2 : 1;
     houseBox(x0, y0, x1, y1, h, c, d.face, rows, true);
@@ -583,7 +576,20 @@ function drawHouse(d) {
     else if (d.ridge === 'y') roofGableY(x0, y0, x1, y1, h, d.w * 11, r, c);
     else roofGableX(x0, y0, x1, y1, h, d.d * 11, r, c);
   }
-  if (d.chimney && d.kind !== 'flat') prism(x0 + d.w * .22, y0 + d.d * .3, h, x0 + d.w * .22 + .2, y0 + d.d * .3 + .2, h + (d.kind === 'hip' ? 16 : d.d * 11 + 4), shade(c, .8));
+  if (d.chimney && d.kind !== 'flat' && d.kind !== 'ell') {   // on the slope facing the camera, rising from the roof surface
+    var cx, cy, cz;
+    if (d.ridge === 'y' && d.kind !== 'hip') { cx = x0 + d.w * .7; cy = y0 + d.d * .35; cz = h + d.w * 11 * (1 - Math.abs(cx + .1 - (x0 + x1) / 2) / (d.w / 2)); }
+    else { var rh2 = d.kind === 'hip' ? Math.min(d.w, d.d) * 9 : d.d * 11; cx = x0 + d.w * .28; cy = y0 + d.d * .62; cz = h + rh2 * (1 - Math.abs(cy + .1 - (y0 + y1) / 2) / (d.d / 2)); }
+    prism(cx, cy, cz - 2, cx + .2, cy + .2, cz + 8, shade(c, .8)); prism(cx - .03, cy - .03, cz + 8, cx + .23, cy + .23, cz + 9.5, shade(c, .65));
+  }
+  if (d.garage) {   // attached single garage on the east side, lower flat roof
+    var gx0 = x1, gx1 = x1 + .75, gy0 = y1 - .85;
+    prism(gx0, gy0, 0, gx1, y1, 14, shade(c, .97));
+    poly([P(gx0 + .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 0), P(gx1 - .1, y1 + .005, 11), P(gx0 + .1, y1 + .005, 11)], '#e9edf7', null, 0);
+    for (var k = 1; k < 4; k++) line(P(gx0 + .1, y1 + .006, k * 2.8), P(gx1 - .1, y1 + .006, k * 2.8), 1, 'rgba(120,120,150,.5)', 'butt');
+    roofFlat(gx0, gy0, gx1, y1, 14, r);
+  }
+
   if (d.porch && d.face !== 'E' && d.kind !== 'ell') {   // a little roof on posts over the front door
     var px = x0 + d.w * .5;
     prism(px - .3, y1 + .3, 0, px - .26, y1 + .34, 12, '#f4f1ea'); prism(px + .26, y1 + .3, 0, px + .3, y1 + .34, 12, '#f4f1ea');
@@ -1417,8 +1423,13 @@ var THEMES = {
 function TH() { return THEMES[S.theme] || THEMES.park; }
 
 /* ---------- the town: plots along real streets, revealed nearest-first as the lot levels up ---------- */
-var TOWN = [], STREET_TREES = [];
-var BACK_ST = [-7.5, -6.5], SIDE_W = [-13, -12], SIDE_E = [19.5, 20.5], FRONT_Y = 19.2;
+var TOWN = [];
+var FRONT_Y = 19.7;
+/* the street network: side streets run north from the main road (W, E) and south across it (WS, ES);
+   the back street (B), the city streets (K1, K2) and the frontage street (F) run along x and hang off them.
+   A street is only paved as far as the houses on it, so roads grow with the town. */
+var STREETS = { W: { dir: 'y', c: -12.5 }, E: { dir: 'y', c: 20 }, WS: { dir: 'y', c: -12.5, south: true }, ES: { dir: 'y', c: 20, south: true },
+  B: { dir: 'x', c: -7 }, K1: { dir: 'x', c: -12.2 }, K2: { dir: 'x', c: -17.6 }, F: { dir: 'x', c: 18.6, south: true } };
 function buildTown() {
   var th = TH(), seed = 11, out = [], x, y;
   function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
@@ -1427,8 +1438,8 @@ function buildTown() {
   var NEON = ['#ff4fd8', '#4ff0ff', '#ffe14f', '#7dff6a'];
   // one plot: usually a house of some shape, sometimes a pocket park or a pair of trees
   var KINDS = ['gable', 'gable', 'hip', 'flat', 'two', 'ell'], ROOFS = th.roof ? [th.roof] : ['#ff7a6b', '#5d7bd8', '#e0a63a', '#8b6bd0', '#d8566e', '#6d6a86', '#4fae8a'];
-  function home(px, py, w, d, facing) {
-    var r = rnd(), p = { x: px, y: py, w: w, d: d };
+  function home(px, py, w, d, facing, st) {
+    var r = rnd(), p = { x: px, y: py, w: w, d: d, st: st, pos: STREETS[st].dir === 'x' ? px + w / 2 : py + d / 2 };
     if (r < .1) { p.t = 'park'; p.s = .85 + rnd() * .35; return p; }
     if (th.home !== 'house') { p.t = th.home; p.h = 36 + rnd() * 50; p.c = TOW[Math.floor(rnd() * TOW.length)]; p.n = NEON[Math.floor(rnd() * 4)]; return p; }
     // a house a bit smaller than its plot, set back by a random amount, with its own look
@@ -1442,21 +1453,25 @@ function buildTown() {
     p.chimney = rnd() < .45; p.porch = rnd() < .45; p.garage = p.kind !== 'ell' && rnd() < .3 && p.x + p.w + .8 < px + w + .4;
     p.lawn = .93 + rnd() * .08; p.drive = facing === 'S' ? (py + d) - (p.y + p.d) : 0;
     if (rnd() < .4) p.tree = { x: px + (rnd() < .5 ? .25 : w - .25), y: py + .3 + rnd() * (d - .5), s: .55 + rnd() * .25 };
+    if (p.tree && Math.abs(p.tree.x - (p.x + p.w / 2)) < p.w / 2 + .3) p.tree.x = p.tree.x < p.x + p.w / 2 ? p.x - .3 : p.x + p.w + .3;   // never inside the house
     return p;
   }
   var pw;
-  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -10 + rnd() * .3, pw - .25, 1.9, 'S')); }
-  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -6.1, pw - .25, 1.7, 'N')); }
-  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(-15.6, y, 1.9, pw - .25, 'E')); out.push(home(-11.6, y, 1.8, pw - .25, 'W')); }
-  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(17.2, y, 1.8, pw - .25, 'W')); out.push(home(21.1, y, 1.9, pw - .25, 'E')); }
-  for (x = -16; x < 25; x += 2.6) {   // across the main road, beyond the widest highway
-    if (th.water) { out.push({ t: S.theme === 'harbor' ? 'box' : 'umbrella', x: x + .4, y: FRONT_Y + .3, n: 1 + Math.floor(rnd() * 3), c: ['#ff7a6b', '#5db8ff', '#ffd04a', '#ff9ccf'][Math.floor(rnd() * 4)], cs: ['#ff7a6b', '#3d8bff', '#ffd04a', '#5fd6a4'] }); continue; }
-    out.push(home(x, FRONT_Y, 2.3, 1.6, 'N'));
+  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -10 + rnd() * .3, pw - .25, 1.9, 'S', 'B')); }
+  for (x = -16.8; x < 24; x += pw) { pw = 1.9 + rnd() * 1.1; out.push(home(x, -5.95, pw - .25, 1.6, 'N', 'B')); }
+  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(-15.6, y, 1.9, pw - .25, 'E', 'W')); out.push(home(-11.5, y, 1.7, pw - .25, 'W', 'W')); }
+  for (y = -4.8; y < 7.4; y += pw) { pw = 2 + rnd() * .8; out.push(home(17.2, y, 1.75, pw - .25, 'W', 'E')); out.push(home(21.1, y, 1.9, pw - .25, 'E', 'E')); }
+  for (x = -16; x < 25; x += 2.6) {   // across the main road, along the frontage street
+    if (th.water) { out.push({ t: S.theme === 'harbor' ? 'box' : 'umbrella', x: x + .4, y: FRONT_Y + .3, w: 1, d: 1, n: 1 + Math.floor(rnd() * 3), c: ['#ff7a6b', '#5db8ff', '#ffd04a', '#ff9ccf'][Math.floor(rnd() * 4)], cs: ['#ff7a6b', '#3d8bff', '#ffd04a', '#5fd6a4'], st: 'F', pos: x + .9 }); continue; }
+    out.push(home(x, FRONT_Y, 2.3, 1.6, 'N', 'F'));
   }
-  for (y = -13.6; y > -22; y -= 3.5) for (x = -17; x < 26; x += 3.1) {   // the skyline at the back
-    if (rnd() < .25) continue;
-    out.push({ t: S.theme === 'neon' ? 'neon' : 'tower', x: x + rnd() * .6, y: y + rnd() * .6, w: 1.5 + rnd(), d: 1.4 + rnd() * .8, h: 70 + rnd() * 110 * (S.theme === 'city' ? 1.5 : 1), c: TOW[Math.floor(rnd() * TOW.length)], n: NEON[Math.floor(rnd() * 4)], sky: true });
-  }
+  [[-15.4, 'K1'], [-20.9, 'K2']].forEach(function (row) {   // city blocks at the back, along their own streets
+    for (x = -17; x < 26; x += 3.1) {
+      if (rnd() < .2) continue;
+      var tw = 1.5 + rnd() * .9;
+      out.push({ t: S.theme === 'neon' ? 'neon' : 'tower', x: x + rnd() * .4, y: row[0] + rnd() * .4, w: tw, d: 1.4 + rnd() * .5, h: 70 + rnd() * 110 * (S.theme === 'city' ? 1.5 : 1), c: TOW[Math.floor(rnd() * TOW.length)], n: NEON[Math.floor(rnd() * 4)], sky: true, st: row[1], pos: x + tw / 2 });
+    }
+  });
   // never build inside the space the lot, market, garage and car wash can grow into (the mega mall tower reaches y -2.9)
   var KEEP = [[GX0 - .6, -3.4, WRX + .9, RY]];
   out = out.filter(function (p) { var w = p.w || 1, d = p.d || 1; return !KEEP.some(function (k) { return p.x < k[2] && p.x + w > k[0] && p.y < k[3] && p.y + d > k[1]; }); });
@@ -1464,17 +1479,60 @@ function buildTown() {
   out.forEach(function (p) { p.dist = Math.hypot(p.x - 4, (p.y - 4) * 1.3) + (p.sky ? 6 : 0); });
   out.sort(function (a, b) { return a.dist - b.dist; });
   TOWN = out;
-  STREET_TREES = [];
-  for (x = -15.5; x < 24; x += 4.6) { STREET_TREES.push([x, BACK_ST[0] - .25, 0]); STREET_TREES.push([x + 2.3, BACK_ST[1] + .25, 1]); }
-  for (y = -4; y < 8; y += 3.4) { STREET_TREES.push([SIDE_W[0] - .3, y, 0]); STREET_TREES.push([SIDE_E[1] + .3, y + 1.7, 1]); }
   lastShown = -1;
+}
+// how far each street is paved: far enough to reach its shown houses, and joined up to the network
+function streetPlan() {
+  var n = townShown(), plan = {}, need = {}, k, i;
+  for (i = 0; i < n; i++) { var p = TOWN[i]; if (!p.st) continue; var e = plan[p.st] || (plan[p.st] = { lo: 1e9, hi: -1e9 }); e.lo = Math.min(e.lo, p.pos - 1.3); e.hi = Math.max(e.hi, p.pos + 1.3); }
+  ['B', 'K1', 'K2', 'F'].forEach(function (id) {   // streets along x hook onto the nearer side street
+    var e = plan[id]; if (!e) return;
+    var side = Math.abs((e.lo + e.hi) / 2 - STREETS.W.c) < Math.abs((e.lo + e.hi) / 2 - STREETS.E.c) ? 'W' : 'E', c = STREETS[side].c;
+    e.lo = Math.min(e.lo, c - .5); e.hi = Math.max(e.hi, c + .5);
+    var sid = STREETS[id].south ? side + 'S' : side;
+    need[sid] = STREETS[id].south ? Math.max(need[sid] || -1e9, STREETS[id].c + .5) : Math.min(need[sid] || 1e9, STREETS[id].c - .5);
+    if (id === 'K2' && !plan.K1) need[side] = Math.min(need[side], STREETS.K2.c - .5);
+  });
+  ['W', 'E'].forEach(function (id) {   // north from the main road
+    var e = plan[id], reach = Math.min(e ? e.lo : 1e9, need[id] === undefined ? 1e9 : need[id]);
+    if (reach < 1e8) plan[id] = { lo: reach, hi: RY };
+  });
+  ['WS', 'ES'].forEach(function (id) { if (need[id] !== undefined) plan[id] = { lo: roadEnd(), hi: need[id] }; });
+  return plan;
+}
+function drawStreets(plan) {
+  var SW = '#d9d2c0', AS = '#6c7898', id, x;
+  for (id in plan) {
+    var st = STREETS[id], e = plan[id], c = st.c;
+    if (st.dir === 'x') { quad(e.lo, c - .95, e.hi, c + .95, SW); quad(e.lo, c - .5, e.hi, c + .5, AS); }
+    else { quad(c - .95, e.lo, c + .95, e.hi, SW); quad(c - .5, e.lo, c + .5, e.hi, AS); }
+  }
+  for (id in plan) {   // centre lines over the crossings
+    var s2 = STREETS[id], f = plan[id];
+    if (s2.dir === 'x') for (x = f.lo + .6; x < f.hi - .6; x += 1.5) quadA(x, s2.c - .03, x + .7, s2.c + .03, 'rgba(255,255,255,.5)');
+    else for (x = f.lo + .6; x < f.hi - .6; x += 1.5) quadA(s2.c - .03, x, s2.c + .03, x + .7, 'rgba(255,255,255,.5)');
+  }
+}
+// trees along the paved sidewalks
+function streetTrees(plan, out) {
+  var id, v, th = TH();
+  for (id in plan) {
+    var st = STREETS[id], e = plan[id];
+    for (v = Math.ceil(e.lo / 4.3) * 4.3 + 1; v < e.hi - .8; v += 4.3) (function (st, v, j) {
+      var a = st.dir === 'x' ? [v, st.c - .78] : [st.c - .78, v], b = st.dir === 'x' ? [v + 2.1, st.c + .78] : [st.c + .78, v + 2.1];
+      [a, b].forEach(function (q, k) {
+        if (Math.abs(q[0] - STREETS.W.c) < 1.2 || Math.abs(q[0] - STREETS.E.c) < 1.2 && st.dir === 'x') return;   // keep junctions clear
+        out.push({ d: q[0] + q[1], f: function () { drawTreeKind(k ? th.tree2 : th.tree, q[0], q[1], .7); } });
+      });
+    })(st, v);
+  }
 }
 // the town fills in with every upgrade you buy this run
 function levelSum() { var n = 0, k; for (k in S.lvl) n += Math.min(30, S.lvl[k]); return n; }
 function townShown() { return Math.min(TOWN.length, 14 + Math.floor(levelSum() * 1.1)); }
 function drawPlot(p) {
   switch (p.t) {
-    case 'house': if (!inBg(p)) drawHouseGround(p); drawHouse(p); if (p.tree) drawTreeKind(TH().tree, p.tree.x, p.tree.y, p.tree.s); break;
+    case 'house': if (!inBg(p)) drawHouseGround(p); drawHouse(p); break;
     case 'park': var th = TH(); drawTreeKind(th.tree, p.x + .45, p.y + .5, p.s); drawTreeKind(th.tree2, p.x + 1.2, p.y + 1, p.s * .85); break;
     case 'umbrella': drawUmbrella(p.x, p.y, p.c); break;
     case 'box': drawContainers(p); break;
@@ -1528,17 +1586,14 @@ function drawGround() {
     var off = REDUCE ? 0 : (S.t * .25) % 3;
     for (x = gx0; x < gx1; x += 3) for (y = wy + 1; y < gy1 + 4; y += 1.6) { var xx = x + off + (y * 1.7) % 3; line(P(xx, y), P(xx + .8, y), 2, 'rgba(255,255,255,.45)'); }
   }
-  // town streets
-  var SW = '#d9d2c0', AS = '#6c7898';
-  quad(-18, BACK_ST[0] - .45, 26, BACK_ST[1] + .45, SW); quad(-18, BACK_ST[0], 26, BACK_ST[1], AS);
-  [SIDE_W, SIDE_E].forEach(function (s) { quad(s[0] - .45, -22, s[1] + .45, RY, SW); quad(s[0], -22, s[1], RY, AS); });
-  for (x = -17; x < 26; x += 1.5) quadA(x, -7.03, x + .7, -6.97, 'rgba(255,255,255,.5)');
-  drawRoad();
+  var plan = streetPlan();
+  drawStreets(plan);
+  drawRoad(plan);
   drawLotGround();
 }
 // the main road: lanes, kerbs, sidewalks and markings for its tier
-function drawRoad() {
-  var R = ROAD(), t = roadTier(), x0 = -26, x1 = 34, ye = RY + R.w, x;
+function drawRoad(plan) {
+  var R = ROAD(), t = roadTier(), x0 = -70, x1 = 80, ye = RY + R.w, x;
   quad(x0, RY - .55, x1, RY, '#d9d2c0');                        // north sidewalk
   quad(x0, RY, x1, ye, '#5f6a86');
   if (t === 3) { quad(x0, RY, x1, RY + .12, '#6c7898'); quad(x0, ye - .2, x1, ye, '#6c7898'); }
@@ -1565,6 +1620,7 @@ function drawRoad() {
   if (S.deckAnim > .02) dw.push([GIN - .5, GOUT + .5]);
   if (S.lvl.wash) { dw.push([WEX - .5, WEX + .5]); dw.push([WRX - .5, WRX + .5]); }
   dw.forEach(function (d) { quad(d[0], RY - .55, d[1], RY + .02, '#6c7898'); });
+  if (plan) ['W', 'E'].forEach(function (id) { var c = STREETS[id].c; if (plan[id]) quad(c - .5, RY - .55, c + .5, RY + .02, '#6c7898'); if (plan[id + 'S']) quad(c - .5, ye - .02, c + .5, ye + .7, '#6c7898'); });
 }
 // the lot: asphalt, kerbs, painted bays, wheel stops, lane arrows, the walkway and the plaza
 function drawLotGround() {
@@ -1762,7 +1818,8 @@ function bakeBg(key) {
   var L = [], n = townShown();
   for (i = 0; i < n; i++) if (TOWN[i].t === 'house' && inBg(TOWN[i]) && onScreen(TOWN[i].x, TOWN[i].y)) drawHouseGround(TOWN[i]);   // yards first, under everything
   for (i = 0; i < n; i++) (function (p, i) { if (inBg(p) && onScreen(p.x, p.y)) L.push({ d: p.x + p.y + p.d + (p.kind === 'ell' ? .9 : 0), f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
-  STREET_TREES.forEach(function (t) { if (onScreen(t[0], t[1])) L.push({ d: t[0] + t[1], f: function () { drawTreeKind(t[2] ? TH().tree2 : TH().tree, t[0], t[1], .75); } }); });
+  streetTrees(streetPlan(), L);
+  for (i = 0; i < n; i++) (function (p) { if (p.tree && inBg(p)) L.push({ d: p.tree.x + p.tree.y, f: function () { drawTreeKind(TH().tree, p.tree.x, p.tree.y, p.tree.s); } }); })(TOWN[i]);
   S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) L.push({ d: s.x + s.y + 50, f: function () { drawChargerPost(s); } }); });
   L.sort(function (a, b) { return a.d - b.d; }); L.forEach(function (o) { o.f(); });
   SEAMS = false; ctx = main;
@@ -1793,6 +1850,7 @@ function draw() {
   var put = function (y, o) { (y < RY - .45 ? north : y < RY + 8 ? road : south).push(o); };
   var n = townShown();
   for (i = 0; i < n; i++) (function (p, i) { if (!inBg(p) && onScreen(p.x, p.y)) put(p.y + p.d, { d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
+  for (i = 0; i < n; i++) (function (p) { if (p.tree && !inBg(p) && onScreen(p.x, p.y)) south.push({ d: p.tree.x + p.tree.y, f: function () { drawTreeKind(TH().tree, p.tree.x, p.tree.y, p.tree.s); } }); })(TOWN[i]);
   if (S.deckAnim > .02) north.push({ d: GX0 + GY1, f: drawGarage });
   north.push({ d: sp[0] + shopFrontY() - .2, f: drawMarket });
   if (S.lvl.wash) north.push({ d: WX0 + WYS[0] + .55, f: drawWash });

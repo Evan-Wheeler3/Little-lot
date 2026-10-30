@@ -109,7 +109,8 @@ function bakeBg(key) {
   var L = [], n = townShown();
   for (i = 0; i < n; i++) if (TOWN[i].t === 'house' && inBg(TOWN[i]) && onScreen(TOWN[i].x, TOWN[i].y)) drawHouseGround(TOWN[i]);   // yards first, under everything
   for (i = 0; i < n; i++) (function (p, i) { if (inBg(p) && onScreen(p.x, p.y)) L.push({ d: p.x + p.y + p.d + (p.kind === 'ell' ? .9 : 0), f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
-  STREET_TREES.forEach(function (t) { if (onScreen(t[0], t[1])) L.push({ d: t[0] + t[1], f: function () { drawTreeKind(t[2] ? TH().tree2 : TH().tree, t[0], t[1], .75); } }); });
+  streetTrees(streetPlan(), L);
+  for (i = 0; i < n; i++) (function (p) { if (p.tree && inBg(p)) L.push({ d: p.tree.x + p.tree.y, f: function () { drawTreeKind(TH().tree, p.tree.x, p.tree.y, p.tree.s); } }); })(TOWN[i]);
   S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) L.push({ d: s.x + s.y + 50, f: function () { drawChargerPost(s); } }); });
   L.sort(function (a, b) { return a.d - b.d; }); L.forEach(function (o) { o.f(); });
   SEAMS = false; ctx = main;
@@ -140,6 +141,7 @@ function draw() {
   var put = function (y, o) { (y < RY - .45 ? north : y < RY + 8 ? road : south).push(o); };
   var n = townShown();
   for (i = 0; i < n; i++) (function (p, i) { if (!inBg(p) && onScreen(p.x, p.y)) put(p.y + p.d, { d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
+  for (i = 0; i < n; i++) (function (p) { if (p.tree && !inBg(p) && onScreen(p.x, p.y)) south.push({ d: p.tree.x + p.tree.y, f: function () { drawTreeKind(TH().tree, p.tree.x, p.tree.y, p.tree.s); } }); })(TOWN[i]);
   if (S.deckAnim > .02) north.push({ d: GX0 + GY1, f: drawGarage });
   north.push({ d: sp[0] + shopFrontY() - .2, f: drawMarket });
   if (S.lvl.wash) north.push({ d: WX0 + WYS[0] + .55, f: drawWash });
