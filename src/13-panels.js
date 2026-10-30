@@ -55,7 +55,7 @@ function mapHtml() {
     var L = locAt(i), th = THEMES[L.theme], st = i < cur ? 'done' : i === cur ? 'here' : i === cur + 1 ? 'next' : 'locked';
     h += '<li class="stop ' + st + '"><span class="dotm" style="background:' + th.ground[0] + ';border-color:' + (st === 'locked' ? '#cdbf9b' : 'var(--ink)') + '">' + (st === 'done' ? '&#10003;' : i + 1) + '</span>' +
       '<div><b>' + L.name + '</b><small>' + L.perk + '</small>' +
-      (st === 'here' ? '<em class="here">You are here</em>' : st === 'next' ? '<em>' + (starsGain() > 0 ? 'Ready: franchise for x' + fmtX(frMult(S.stars + starsGain())) + ' income' : 'Franchise to open') + '</em>' : st === 'done' ? '<em class="ok">Visited</em>' : '') + '</div></li>';
+      (st === 'here' ? '<em class="here">You are here</em>' : st === 'next' ? '<em>' + (starsGain() > 0 ? 'Ready to franchise' : 'Franchise to open') + '</em>' : st === 'done' ? '<em class="ok">Visited</em>' : '') + '</div></li>';
   }
   h += '</ol><button class="buy" type="button" data-act="fr">Franchising</button>';
   return h;
@@ -88,7 +88,7 @@ function dailyHtml() {
 }
 function arriveHtml() {
   var L = LOC();
-  return '<div class="arrive" style="background:' + THEMES[L.theme].bg[0] + '"><b>x' + fmtX(frMult()) + '</b><span>income bonus</span></div>' +
+  return '<div class="arrive" style="background:' + THEMES[L.theme].bg[0] + '"><b>x' + fmtX(frMult()) + '</b><span>income boost</span></div>' +
     '<p class="pnote">' + L.perk + '. You have ' + S.tok + ' tokens to spend in the token shop on permanent upgrades.</p>' +
     '<div class="setbtns"><button class="buy" type="button" data-act="close">Open the lot</button><button class="buy ghost" type="button" data-act="perks">Spend tokens</button></div>';
 }

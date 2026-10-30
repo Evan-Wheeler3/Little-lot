@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.6';
+var VERSION = '1.1.7';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -198,10 +198,10 @@ function econRate() {
 }
 function econBase() { return econRate() / (boostOn() ? 2 : 1); }
 // franchise points come from everything you have ever earned; franchising pays out the points earned since last time
-var STAR_BASE = 3e6;
-function starsTotal() { return Math.floor(Math.pow(S.lifetime / STAR_BASE, 0.25)); }
+var STAR_BASE = 1e5;   // the first boost at $100K earned, then $3.2M, $24M, $100M... (5th powers)
+function starsTotal() { return Math.floor(Math.pow(S.lifetime / STAR_BASE, 0.2)); }
 function starsGain() { return Math.max(0, starsTotal() - S.stars); }
-function starAt(n) { return Math.pow(n, 4) * STAR_BASE; }
+function starAt(n) { return Math.pow(n, 5) * STAR_BASE; }
 function headStart() { return S.perk.head ? 200 * Math.pow(3, S.perk.head - 1) : 0; }
 
 /* ---------- save and load ---------- */
@@ -2296,24 +2296,29 @@ function perkHtml(k) {
     '<div class="nnw">' + bigStat(b[0], b[1], maxed ? '' : d.up) + '</div>' +
     '<button class="buy" type="button" data-perk="' + k + '"' + (!maxed && S.tok >= c ? '' : ' disabled') + '>' + (maxed ? 'Maxed' : c + ' <i class="tk"></i>') + '</button></article>';
 }
+// Franchising in one idea: sell the lot, start over in a new town, keep a permanent income boost that grows.
 function frHtml() {
-  var gain = starsGain(), base = starAt(starsTotal()), nxt = starAt(starsTotal() + 1), nl = locAt(S.franchises + 1);
-  var pc = Math.max(0, Math.min(100, (S.lifetime - base) / (nxt - base) * 100));
+  var gain = starsGain(), nl = locAt(S.franchises + 1);
   var h = '<div class="fr"><h3>Franchise</h3>' +
-    '<p>Sell this lot and open the next one on the map. You keep your income bonus, tokens, gems and goals. The new lot starts from scratch, and you can build its garage 2 floors higher.</p>' +
-    '<div class="frbig"><div><small>Income bonus</small><b>x' + fmtX(frMult()) + '</b>' + (gain ? '<span>&rarr; x' + fmtX(frMult(S.stars + gain)) + '</span>' : '') + '</div>' +
+    '<p class="frlead">Sell this lot and start over in a new town. Your <b>income boost</b> stays forever and grows every time.</p>' +
+    '<div class="frbig"><div><small>Income boost</small><b>x' + fmtX(frMult()) + '</b>' + (gain ? '<span>&rarr; x' + fmtX(frMult(S.stars + gain)) + '</span>' : '') + '</div>' +
     '<div><small>Tokens</small><b>' + S.tok + '</b>' + (gain ? '<span>+' + gain + '</span>' : '') + '</div></div>' +
-    '<div class="meter" role="img" aria-label="Progress to the next bonus step"><i id="fr-bar" style="width:' + pc + '%"></i></div>' +
-    '<p id="fr-note">' + frNote() + '</p>' +
-    '<div class="nextloc"><small>Next stop</small><b>' + nl.name + '</b><span>' + nl.perk + '</span></div>';
+    '<div class="frprog"><div class="meter" role="img" aria-label="Progress to the next boost"><i id="fr-bar" style="width:' + frPct() + '%"></i></div><p id="fr-note">' + frNote() + '</p></div>';
   if (!S.confirmFr) h += '<button class="buy" type="button" id="fr-go"' + (gain < 1 ? ' disabled' : '') + '>' + frBtn() + '</button>';
-  else h += '<p>This resets your money, buildings, upgrades and staff.</p><div class="btns"><button class="buy danger" type="button" id="fr-yes">Yes, sell this lot</button><button class="buy ghost" type="button" id="fr-no">Keep playing</button></div>';
-  h += '</div><p class="tabnote">Token shop: permanent upgrades that last through every franchise. You have ' + S.tok + ' <i class="tk"></i>.</p>';
+  else h += '<p class="frc">Sell and move to <b>' + nl.name + '</b>?</p><ul class="frlist"><li class="keep">Keep: income boost, tokens, gems, goals</li><li class="lose">Start over: money, buildings, upgrades, staff</li></ul>' +
+    '<div class="btns"><button class="buy danger" type="button" id="fr-yes">Sell and move</button><button class="buy ghost" type="button" id="fr-no">Not yet</button></div>';
+  h += '<div class="nextloc"><small>Next town</small><b>' + nl.name + '</b><span>' + nl.perk + '</span></div></div>' +
+    '<p class="tabnote">Token shop: permanent upgrades. You have ' + S.tok + ' <i class="tk"></i>.</p>';
   PORDER.forEach(function (k) { h += perkHtml(k); });
   return h;
 }
-function frNote() { return 'Every $' + fmt(starAt(starsTotal() + 1) - starAt(starsTotal())) + ' more you earn adds +35% income and 1 token. Next step at $' + fmt(starAt(starsTotal() + 1)) + ' earned in total (now $' + fmt(S.lifetime) + ').'; }
-function frBtn() { var g = starsGain(); return g < 1 ? 'Earn more to franchise' : 'Sell for x' + fmtX(frMult(S.stars + g)) + ' income and ' + g + (g === 1 ? ' token' : ' tokens'); }
+function frNext() { return starAt(starsTotal() + 1); }
+function frPct() { var a = starAt(starsTotal()), b = frNext(); return Math.max(0, Math.min(100, (S.lifetime - a) / (b - a) * 100)); }
+function frNote() {
+  var g = starsGain();
+  return '$' + fmt(S.lifetime) + ' / $' + fmt(frNext()) + ' earned · ' + (g ? 'each step adds +35% boost and a token' : S.franchises ? 'reach it to franchise again' : 'reach it to unlock franchising');
+}
+function frBtn() { var g = starsGain(); return g < 1 ? 'Earn $' + fmt(frNext() - S.lifetime) + ' more' : 'Sell lot: boost x' + fmtX(frMult()) + ' → x' + fmtX(frMult(S.stars + g)); }
 function buildTray() {
   var h = '';
   if (S.tab === 'fr') h = frHtml();
@@ -2357,8 +2362,7 @@ function refreshTray() {
 }
 function updateFr() {
   var bar = document.getElementById('fr-bar'); if (!bar) return;
-  var base = starAt(starsTotal()), nxt = starAt(starsTotal() + 1);
-  bar.style.width = Math.max(0, Math.min(100, (S.lifetime - base) / (nxt - base) * 100)) + '%';
+  bar.style.width = frPct() + '%';
   document.getElementById('fr-note').textContent = frNote();
   var go = document.getElementById('fr-go');
   if (go) { go.textContent = frBtn(); go.disabled = starsGain() < 1; }
@@ -2477,7 +2481,7 @@ function mapHtml() {
     var L = locAt(i), th = THEMES[L.theme], st = i < cur ? 'done' : i === cur ? 'here' : i === cur + 1 ? 'next' : 'locked';
     h += '<li class="stop ' + st + '"><span class="dotm" style="background:' + th.ground[0] + ';border-color:' + (st === 'locked' ? '#cdbf9b' : 'var(--ink)') + '">' + (st === 'done' ? '&#10003;' : i + 1) + '</span>' +
       '<div><b>' + L.name + '</b><small>' + L.perk + '</small>' +
-      (st === 'here' ? '<em class="here">You are here</em>' : st === 'next' ? '<em>' + (starsGain() > 0 ? 'Ready: franchise for x' + fmtX(frMult(S.stars + starsGain())) + ' income' : 'Franchise to open') + '</em>' : st === 'done' ? '<em class="ok">Visited</em>' : '') + '</div></li>';
+      (st === 'here' ? '<em class="here">You are here</em>' : st === 'next' ? '<em>' + (starsGain() > 0 ? 'Ready to franchise' : 'Franchise to open') + '</em>' : st === 'done' ? '<em class="ok">Visited</em>' : '') + '</div></li>';
   }
   h += '</ol><button class="buy" type="button" data-act="fr">Franchising</button>';
   return h;
@@ -2510,7 +2514,7 @@ function dailyHtml() {
 }
 function arriveHtml() {
   var L = LOC();
-  return '<div class="arrive" style="background:' + THEMES[L.theme].bg[0] + '"><b>x' + fmtX(frMult()) + '</b><span>income bonus</span></div>' +
+  return '<div class="arrive" style="background:' + THEMES[L.theme].bg[0] + '"><b>x' + fmtX(frMult()) + '</b><span>income boost</span></div>' +
     '<p class="pnote">' + L.perk + '. You have ' + S.tok + ' tokens to spend in the token shop on permanent upgrades.</p>' +
     '<div class="setbtns"><button class="buy" type="button" data-act="close">Open the lot</button><button class="buy ghost" type="button" data-act="perks">Spend tokens</button></div>';
 }
@@ -2589,7 +2593,7 @@ var elMoney = $id('money'), elParked = $id('parked'), pill = $id('moneyPill'), e
 var elStars = $id('stars'), starPill = $id('starPill'), elGems = $id('gems'), boostChip = $id('boostChip'), boostT = $id('boostT');
 var hypeEl = $id('hype'), hypeFill = $id('hypeFill'), hypeTxt = $id('hypeTxt'), recenterBtn = $id('recenter');
 var dailyDot = $id('dailyDot'), shopDot = $id('shopDot'), rushBtn = $id('rushBtn');
-var hglow = $id('hglow'), fades = $id('stage'), lastHudT = 0, lastTrayT = 0, lastGlow = -1, lastTheme = null;
+var frTold = false, hglow = $id('hglow'), fades = $id('stage'), lastHudT = 0, lastTrayT = 0, lastGlow = -1, lastTheme = null;
 var lastMoney = -1, lastParked = '', lastRate = '', lastFr = 0, lastGoalChk = 0, lastGoals = 0, lastGems = -1, lastHype = '';
 function hud() {
   var tnow = perfNow();
@@ -2626,6 +2630,7 @@ function hud() {
   if (S.tab === 'fr' && S.t - lastFr > 0.5) { lastFr = S.t; updateFr(); }
   if (S.t - lastGoalChk > 1) {
     lastGoalChk = S.t; refreshTray(); tickTut();
+    if (!frTold && S.franchises === 0 && starsGain() > 0) { frTold = true; note('Franchise unlocked · see Upgrades'); }
     var gr = goalsReady(); if (gr > lastGoals) { note('Goal ready to claim'); sfx('claim'); } lastGoals = gr;
     if (S.tab === 'goals' && sheet.classList.contains('open')) buildTray();
   }

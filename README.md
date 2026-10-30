@@ -13,7 +13,7 @@ Plain HTML, CSS and JavaScript with no framework. It runs in any browser and shi
 - **Upgrades** in four tabs (Build, Speed, Money, Staff). Every card says what it does, shows Now and Next with real numbers, and names the next landmark (a new row, a bigger building, another wash lane, a new class of car, a milestone doubling).
 - **Staff** with long upgrade lines: concierge (golden cars), promoter (rush hours), hype crew (slower meter drain), night manager (away earnings).
 - **Goals**: nine endless goal lines that pay cash and gems.
-- **Franchising (prestige)**: sell the lot for a bigger **income bonus** and **tokens**. Tokens buy permanent upgrades in the token shop. Nothing else to track.
+- **Franchising (prestige)**: sell the lot and start over in a new town, keeping a permanent **income boost** that grows each time, plus **tokens** for the token shop's permanent upgrades. It unlocks at $100K earned.
 - **Map**: every franchise opens the next location (Palm Beach, Downtown, Frosty Peaks, Cactus Springs, Neon City, Harbor Point, then laps), each with its own look and perk.
 - **Away earnings**: the lot earns while closed (40% speed for 4 hours at first, both upgradeable), with an option to double it for gems.
 - **Daily gift**: a seven-day streak calendar.
@@ -85,7 +85,7 @@ Supabase's built-in email sender is limited to a few emails an hour, which is fi
 - The first upgrade comes within seconds; the first garage floor around 3 to 4 minutes; the build-out (garage at its floor cap, car wash, second row of bays) takes about 10 to 15 minutes.
 - The first franchise is worth taking around 20 minutes for an active player, later ones every 20 to 25 minutes, each run getting further.
 
-Franchise points come from lifetime earnings (the first at $3M, then the 4th root), so each run is quicker than the last without running away. Rewards (goal cash, time warps, gifts) are spending money and do not count as earnings, which stops reward loops.
+The income boost grows in steps of +35% based on lifetime earnings: the first step at $100K, then $3.2M, $24M, $100M (5th powers of the step number times $100K), so the first franchise comes quickly and each run is quicker than the last without running away. Rewards (goal cash, time warps, gifts) are spending money and do not count as earnings, which stops reward loops.
 
 ## Publish the web version on GitHub Pages
 

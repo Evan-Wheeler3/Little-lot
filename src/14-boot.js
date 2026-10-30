@@ -4,7 +4,7 @@ var elMoney = $id('money'), elParked = $id('parked'), pill = $id('moneyPill'), e
 var elStars = $id('stars'), starPill = $id('starPill'), elGems = $id('gems'), boostChip = $id('boostChip'), boostT = $id('boostT');
 var hypeEl = $id('hype'), hypeFill = $id('hypeFill'), hypeTxt = $id('hypeTxt'), recenterBtn = $id('recenter');
 var dailyDot = $id('dailyDot'), shopDot = $id('shopDot'), rushBtn = $id('rushBtn');
-var hglow = $id('hglow'), fades = $id('stage'), lastHudT = 0, lastTrayT = 0, lastGlow = -1, lastTheme = null;
+var frTold = false, hglow = $id('hglow'), fades = $id('stage'), lastHudT = 0, lastTrayT = 0, lastGlow = -1, lastTheme = null;
 var lastMoney = -1, lastParked = '', lastRate = '', lastFr = 0, lastGoalChk = 0, lastGoals = 0, lastGems = -1, lastHype = '';
 function hud() {
   var tnow = perfNow();
@@ -41,6 +41,7 @@ function hud() {
   if (S.tab === 'fr' && S.t - lastFr > 0.5) { lastFr = S.t; updateFr(); }
   if (S.t - lastGoalChk > 1) {
     lastGoalChk = S.t; refreshTray(); tickTut();
+    if (!frTold && S.franchises === 0 && starsGain() > 0) { frTold = true; note('Franchise unlocked · see Upgrades'); }
     var gr = goalsReady(); if (gr > lastGoals) { note('Goal ready to claim'); sfx('claim'); } lastGoals = gr;
     if (S.tab === 'goals' && sheet.classList.contains('open')) buildTray();
   }

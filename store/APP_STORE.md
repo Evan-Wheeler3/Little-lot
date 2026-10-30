@@ -86,7 +86,7 @@ HIRE STAFF
 A concierge to greet golden cars, a promoter for rush hour, a hype crew and a night manager keep the lot running for you.
 
 FRANCHISE ACROSS THE MAP
-Sell your lot for a bigger income bonus and tokens for permanent upgrades, then open the next one: Palm Beach, Downtown, Frosty Peaks, Cactus Springs, Neon City and Harbor Point. Each stop pays more and has its own perk.
+Sell your lot to grow a permanent income boost and earn tokens for permanent upgrades, then open the next one: Palm Beach, Downtown, Frosty Peaks, Cactus Springs, Neon City and Harbor Point. Each stop has its own look and perk.
 
 EARN WHILE YOU ARE AWAY
 Your lot keeps parking cars while you are gone. Come back to a pile of cash, a daily gift and new goals to chase.

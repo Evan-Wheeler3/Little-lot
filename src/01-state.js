@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.6';
+var VERSION = '1.1.7';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -198,10 +198,10 @@ function econRate() {
 }
 function econBase() { return econRate() / (boostOn() ? 2 : 1); }
 // franchise points come from everything you have ever earned; franchising pays out the points earned since last time
-var STAR_BASE = 3e6;
-function starsTotal() { return Math.floor(Math.pow(S.lifetime / STAR_BASE, 0.25)); }
+var STAR_BASE = 1e5;   // the first boost at $100K earned, then $3.2M, $24M, $100M... (5th powers)
+function starsTotal() { return Math.floor(Math.pow(S.lifetime / STAR_BASE, 0.2)); }
 function starsGain() { return Math.max(0, starsTotal() - S.stars); }
-function starAt(n) { return Math.pow(n, 4) * STAR_BASE; }
+function starAt(n) { return Math.pow(n, 5) * STAR_BASE; }
 function headStart() { return S.perk.head ? 200 * Math.pow(3, S.perk.head - 1) : 0; }
 
 /* ---------- save and load ---------- */

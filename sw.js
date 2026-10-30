@@ -1,6 +1,6 @@
 // Offline support for the web version: serve the game from the cache, refresh it in the background.
 // Bump VERSION whenever game files change so players get the update.
-var VERSION = 'littlelot-1.1.6';
+var VERSION = 'littlelot-1.1.7';
 var FILES = ['./', 'index.html', 'style.css', 'game.js', 'auth.js', 'config.js', 'manifest.webmanifest', 'privacy.html',
   'assets/fonts/fredoka-latin-500-normal.woff2', 'assets/fonts/fredoka-latin-600-normal.woff2', 'assets/fonts/fredoka-latin-700-normal.woff2',
   'assets/fonts/nunito-latin-700-normal.woff2', 'assets/fonts/nunito-latin-800-normal.woff2',
