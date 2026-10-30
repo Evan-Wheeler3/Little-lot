@@ -91,6 +91,7 @@ setInterval(save, 8000);
 function fit() {
   var r = $id('stage').getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, SET.saver ? 1.5 : 2);
   S.w = Math.max(1, r.width); S.h = Math.max(1, r.height);
+  var sp = $id('safeProbe'); S.safeT = sp ? sp.offsetHeight : 0; S.safeB = sp ? parseFloat(getComputedStyle(sp).paddingBottom) || 0 : 0;   // notch and home bar
   cv.width = Math.max(1, Math.round(S.w * dpr)); cv.height = Math.max(1, Math.round(S.h * dpr));
   if (sheet.classList.contains('open')) S.padTarget = Math.max(0, sheet.offsetHeight - 80);
 }

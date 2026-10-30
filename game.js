@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.3';
+var VERSION = '1.1.4';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -28,7 +28,7 @@ var S = {
   rush: 0, rushWait: 90, rushReady: 0, hype: 0, hlock: 0, atMax: false, parade: 0, tod: 0.85,
   t: 0, id: 0, spawnT: 0.5, vipT: 40, trafT: 0, gate: 0, deckAnim: 0, camSet: false, built: {},
   cam: { l: 0, t: 0, r: 700, b: 400 }, view: { z: 1, x: 0, y: 0, user: false },
-  cars: [], traffic: [], walkers: [], spots: [], particles: [], fx: [], earn: [], pad: 0, padTarget: 0, w: 400, h: 600,
+  cars: [], traffic: [], walkers: [], spots: [], particles: [], fx: [], earn: [], pad: 0, padTarget: 0, w: 400, h: 600, safeT: 0, safeB: 0,
   tab: 'build', qty: 1, confirmFr: false,
   clouds: [{ x: -6, y: -8, s: 1, v: .22 }, { x: 6, y: 2, s: .8, v: .16 }, { x: 14, y: -4, s: 1.2, v: .2 }, { x: -14, y: 8, s: .9, v: .18 }]
 };
@@ -1662,7 +1662,7 @@ function camTarget() {
 }
 // phones held upright get a closer look; pinch out to see everything
 function defaultZoom() {
-  var c = S.cam, availH = Math.max(120, S.h - 92 - 150), fit = Math.min(S.w / (c.r - c.l), availH / (c.b - c.t));
+  var c = S.cam, availH = Math.max(120, S.h - 242 - S.safeT - S.safeB), fit = Math.min(S.w / (c.r - c.l), availH / (c.b - c.t));
   return Math.max(1, Math.min(2, .74 / fit));
 }
 function stepCam(dt) {
@@ -1682,7 +1682,7 @@ function clampView() {
 }
 function computeT() {
   var dpr = cv.width / S.w, c = S.cam, VW = c.r - c.l, VH = c.b - c.t, v = S.view;
-  var topPad = 92, botPad = 150 + S.pad, availH = Math.max(120, S.h - topPad - botPad);
+  var topPad = 92 + S.safeT, botPad = 150 + S.safeB + S.pad, availH = Math.max(120, S.h - topPad - botPad);
   var sc = Math.min(S.w / VW, availH / VH) * v.z;
   var cx = c.l + VW / 2 + v.x, cy = c.t + VH / 2 + v.y;
   T.k = sc * dpr; T.dpr = dpr; T.ox = (S.w / 2 - cx * sc) * dpr; T.oy = (topPad + availH / 2 - cy * sc) * dpr;
@@ -2618,6 +2618,7 @@ setInterval(save, 8000);
 function fit() {
   var r = $id('stage').getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, SET.saver ? 1.5 : 2);
   S.w = Math.max(1, r.width); S.h = Math.max(1, r.height);
+  var sp = $id('safeProbe'); S.safeT = sp ? sp.offsetHeight : 0; S.safeB = sp ? parseFloat(getComputedStyle(sp).paddingBottom) || 0 : 0;   // notch and home bar
   cv.width = Math.max(1, Math.round(S.w * dpr)); cv.height = Math.max(1, Math.round(S.h * dpr));
   if (sheet.classList.contains('open')) S.padTarget = Math.max(0, sheet.offsetHeight - 80);
 }

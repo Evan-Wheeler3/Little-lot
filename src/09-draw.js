@@ -9,7 +9,7 @@ function camTarget() {
 }
 // phones held upright get a closer look; pinch out to see everything
 function defaultZoom() {
-  var c = S.cam, availH = Math.max(120, S.h - 92 - 150), fit = Math.min(S.w / (c.r - c.l), availH / (c.b - c.t));
+  var c = S.cam, availH = Math.max(120, S.h - 242 - S.safeT - S.safeB), fit = Math.min(S.w / (c.r - c.l), availH / (c.b - c.t));
   return Math.max(1, Math.min(2, .74 / fit));
 }
 function stepCam(dt) {
@@ -29,7 +29,7 @@ function clampView() {
 }
 function computeT() {
   var dpr = cv.width / S.w, c = S.cam, VW = c.r - c.l, VH = c.b - c.t, v = S.view;
-  var topPad = 92, botPad = 150 + S.pad, availH = Math.max(120, S.h - topPad - botPad);
+  var topPad = 92 + S.safeT, botPad = 150 + S.safeB + S.pad, availH = Math.max(120, S.h - topPad - botPad);
   var sc = Math.min(S.w / VW, availH / VH) * v.z;
   var cx = c.l + VW / 2 + v.x, cy = c.t + VH / 2 + v.y;
   T.k = sc * dpr; T.dpr = dpr; T.ox = (S.w / 2 - cx * sc) * dpr; T.oy = (topPad + availH / 2 - cy * sc) * dpr;

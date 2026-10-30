@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.3';
+var VERSION = '1.1.4';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -28,7 +28,7 @@ var S = {
   rush: 0, rushWait: 90, rushReady: 0, hype: 0, hlock: 0, atMax: false, parade: 0, tod: 0.85,
   t: 0, id: 0, spawnT: 0.5, vipT: 40, trafT: 0, gate: 0, deckAnim: 0, camSet: false, built: {},
   cam: { l: 0, t: 0, r: 700, b: 400 }, view: { z: 1, x: 0, y: 0, user: false },
-  cars: [], traffic: [], walkers: [], spots: [], particles: [], fx: [], earn: [], pad: 0, padTarget: 0, w: 400, h: 600,
+  cars: [], traffic: [], walkers: [], spots: [], particles: [], fx: [], earn: [], pad: 0, padTarget: 0, w: 400, h: 600, safeT: 0, safeB: 0,
   tab: 'build', qty: 1, confirmFr: false,
   clouds: [{ x: -6, y: -8, s: 1, v: .22 }, { x: 6, y: 2, s: .8, v: .16 }, { x: 14, y: -4, s: 1.2, v: .2 }, { x: -14, y: 8, s: .9, v: .18 }]
 };
