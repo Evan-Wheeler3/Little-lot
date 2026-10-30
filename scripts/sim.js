@@ -53,13 +53,13 @@ const HOURS = +process.argv[2] || 3, TAPS = +(process.argv[3] || 2);
         if (!best) break;
         const pl = L.plan(best, 1); S.money -= pl.cost; L.ITEMS[best].apply();
         const key = best + L.ITEMS[best].lvl();
-        if (['garage1','wash1','space1','space2','ev1','garage4','sign3','concierge1'].includes(key) && !firsts[key + '@' + S.franchises]) firsts[key + '@' + S.franchises] = Math.round((simT - runStart) / 60 * 10) / 10;
+        if (['garage1','wash1','space3','space7','ev1','garage4','rep5','shop15','gate5','gate15'].includes(key) && !firsts[key + '@' + S.franchises]) firsts[key + '@' + S.franchises] = Math.round((simT - runStart) / 60 * 10) / 10;
       }
       const g = L.starsGain(), runMin = (simT - runStart) / 60;
       if (g >= 1 && (g >= Math.max(3, Math.ceil(S.stars * 0.6)) || runMin > 90)) {
         runs.push({ run: S.franchises, min: Math.round(runMin), gain: g, earned: L.fmt(S.totalRun), loc: L.LOC().name });
         L.doFranchise(); runStart = simT;
-        ['gold','tap','blue','head','lucky','rush','night','sleep'].forEach(k => { for (let z = 0; z < 20; z++) if (!L.buyPerk(k)) break; });
+        ['hustle','gold','tap','blue','head','lucky','rush','night','sleep'].forEach(k => { for (let z = 0; z < 20; z++) if (!L.buyPerk(k)) break; });
         document.getElementById('panel').hidden = true;
       }
     }

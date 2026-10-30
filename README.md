@@ -6,19 +6,19 @@ Plain HTML, CSS and JavaScript with no framework. It runs in any browser and shi
 
 ## What is in the game
 
-- **Core loop**: cars arrive, park, the driver walks to the market, shops, walks back and pays. Every step can be upgraded.
-- **Tap to hustle**: taps drop coins and fill the hustle meter, which speeds the whole lot up. A full meter starts **Fever**: 2.5x speed and double cash.
+- **Core loop**: cars drive up the entry lane, park, the driver walks to the market, shops, walks back, pays and leaves by the exit lane. Every step can be upgraded.
+- **Tap to hustle**: steady tapping fills the hustle meter, which multiplies all income (x3 at first, up to x20 with the Hustle power token upgrade). It drains slowly when you stop.
+- **A lot that grows physically**: bays fill a row of 10, then new rows open and the market moves back. The road widens from a two-lane street to a four-lane avenue, a boulevard and a six-lane highway with through traffic. The market grows from a corner store to a mega mall. The car wash adds lanes. Reputation brings nicer cars, from small beaters to supercars. The town fills in house by house as you level up.
 - **Camera**: pinch or scroll to zoom, drag to look around, tap the target button to come back.
-- **Upgrades** in four tabs (Build, Speed, Money, Staff). Endless lines get milestone doublings at levels 10, 25, 50 and every 25 after that.
-- **Buildings** that appear as you buy them: garage floors, a car wash with spinning brushes, EV chargers, a billboard, a valet stand, zebra crossings and more.
-- **Staff**: a concierge for golden cars, a promoter for rush hours, a hype crew that keeps the meter up, a night manager for away earnings.
-- **Goals**: nine endless goal lines, each claim gives +2% income, cash and gems.
-- **Franchising (prestige)**: stars come from lifetime earnings, +35% income each, plus tokens for eight permanent perks.
-- **Map**: every franchise opens the next location (Palm Beach, Downtown, Frosty Peaks, Cactus Springs, Neon City, Harbor Point, then laps), each with its own look, income bonus and perk.
+- **Upgrades** in four tabs (Build, Speed, Money, Staff). Every card says what it does, shows Now and Next with real numbers, and names the next landmark (a new row, a bigger building, another wash lane, a new class of car, a milestone doubling).
+- **Staff** with long upgrade lines: concierge (golden cars), promoter (rush hours), hype crew (slower meter drain), night manager (away earnings).
+- **Goals**: nine endless goal lines that pay cash and gems.
+- **Franchising (prestige)**: sell the lot for a bigger **income bonus** and **tokens**. Tokens buy permanent upgrades in the token shop. Nothing else to track.
+- **Map**: every franchise opens the next location (Palm Beach, Downtown, Frosty Peaks, Cactus Springs, Neon City, Harbor Point, then laps), each with its own look and perk.
 - **Away earnings**: the lot earns while closed (40% speed for 4 hours at first, both upgradeable), with an option to double it for gems.
 - **Daily gift**: a seven-day streak calendar.
-- **Gems and shop**: earned from goals, golden cars, franchising and daily gifts. Spend them on x2 income, time warps, instant Fever and golden car parades. Gem packs, a Golden Pass and a starter pack are in-app purchases in the iOS app.
-- **Polish**: day and night with lights, cloud shadows, eight car types that steer and accelerate smoothly, synthesized sound effects and music, haptics, a short tutorial, settings, and reduced motion support.
+- **Gems and shop**: earned from goals, golden cars, franchising and daily gifts. Spend them on x2 income, time warps, a hustle lock and golden car parades. Gem packs, a Golden Pass and a starter pack are in-app purchases in the iOS app.
+- **Polish**: day and night with lights, cloud shadows, smooth steering and braking, synthesized sound and music, haptics, a short tutorial, settings, and reduced motion support.
 - **Accounts** (optional): email sign-in with cloud saves through Supabase, password reset, and in-app account deletion.
 
 ## Files
@@ -79,16 +79,12 @@ Supabase's built-in email sender is limited to a few emails an hour, which is fi
 
 ## Balancing
 
-`node scripts/sim.js 6 2` plays six hours at high speed with a bot that taps twice a second, and prints the pace (it needs Playwright). Current targets, from the last run:
+`node scripts/sim.js 3 2` plays three hours at high speed with a bot that taps twice a second, and prints the pace (it needs Playwright). From the last run:
 
-| | Active player (2 taps/s) | Idle player (no taps) |
-| --- | --- | --- |
-| First upgrade | under 10 s | under 15 s |
-| First garage floor | 4 min | 9 min |
-| First franchise | about 40 min | about 90 min |
-| Later franchises | 25 to 45 min each, slowly shortening | |
+- The first upgrade comes within seconds; the first garage floor around 3 to 4 minutes; the build-out (garage at its floor cap, car wash, second row of bays) takes about 10 to 15 minutes.
+- The first franchise is worth taking around 20 minutes for an active player, later ones every 20 to 25 minutes, each run getting further.
 
-Stars come from lifetime earnings (one star at $1M, then the 4th root), so each run is faster than the last without the runaway that per-run stars cause.
+Franchise points come from lifetime earnings (the first at $3M, then the 4th root), so each run is quicker than the last without running away. Rewards (goal cash, time warps, gifts) are spending money and do not count as earnings, which stops reward loops.
 
 ## Publish the web version on GitHub Pages
 

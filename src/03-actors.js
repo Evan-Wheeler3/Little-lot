@@ -1,24 +1,39 @@
 /* ---------- cars and people ---------- */
 // body: length L and width W in tiles, body height b; cabin length cl and width cw as shares of the body, cabin height ch, slid co along the car
 var CARS = {
-  sedan: { L: .74, W: .44, b: 7.5, cl: .55, cw: .86, ch: 6.5, co: -.04, w: 30 },
-  hatch: { L: .62, W: .42, b: 7.5, cl: .6, cw: .86, ch: 7, co: -.1, w: 20 },
-  suv: { L: .8, W: .48, b: 9, cl: .66, cw: .88, ch: 7, co: -.06, w: 16 },
-  van: { L: .84, W: .48, b: 9, cl: .82, cw: .92, ch: 8, co: -.04, w: 10 },
-  pickup: { L: .84, W: .46, b: 7, cl: .34, cw: .88, ch: 7, co: .14, bed: true, w: 10 },
-  taxi: { L: .74, W: .44, b: 7.5, cl: .55, cw: .86, ch: 6.5, co: -.04, sign: true, color: '#ffd04a', w: 6 },
-  sport: { L: .78, W: .46, b: 5.5, cl: .42, cw: .8, ch: 5, co: -.08, w: 6 },
-  limo: { L: 1.0, W: .46, b: 7.5, cl: .7, cw: .86, ch: 6.5, co: -.04, color: '#ffd04a', w: 0 }
+  mini: { L: .56, W: .38, b: 6.5, cl: .62, cw: .86, ch: 6, co: -.06 },
+  hatch: { L: .62, W: .42, b: 7.5, cl: .6, cw: .86, ch: 7, co: -.1 },
+  sedan: { L: .74, W: .44, b: 7.5, cl: .55, cw: .86, ch: 6.5, co: -.04 },
+  wagon: { L: .8, W: .44, b: 7.5, cl: .76, cw: .88, ch: 6.5, co: -.06 },
+  van: { L: .84, W: .48, b: 9, cl: .82, cw: .92, ch: 8, co: -.04 },
+  taxi: { L: .74, W: .44, b: 7.5, cl: .55, cw: .86, ch: 6.5, co: -.04, sign: true, color: '#ffd04a' },
+  suv: { L: .8, W: .48, b: 9, cl: .66, cw: .88, ch: 7, co: -.06 },
+  pickup: { L: .84, W: .46, b: 7, cl: .34, cw: .88, ch: 7, co: .14, bed: true },
+  sport: { L: .78, W: .46, b: 5.5, cl: .42, cw: .8, ch: 5, co: -.08 },
+  lux: { L: .92, W: .46, b: 7.5, cl: .58, cw: .86, ch: 6.5, co: -.08 },
+  super: { L: .84, W: .5, b: 4.5, cl: .34, cw: .76, ch: 4, co: -.06, low: true },
+  limo: { L: 1.0, W: .46, b: 7.5, cl: .7, cw: .86, ch: 6.5, co: -.04, color: '#ffd04a' }
 };
-var CAR_KEYS = Object.keys(CARS);
+// the six classes Reputation unlocks, from rattly small cars to supercars
+var CLASS_TYPES = [['mini', 'hatch'], ['sedan', 'wagon', 'van', 'taxi'], ['suv', 'pickup', 'sedan'], ['sport', 'suv'], ['lux', 'sport'], ['super', 'lux']];
+var CLASS_COLORS = [
+  ['#c9a27a', '#9fb3a0', '#b5a8c9', '#d49a8a', '#a8b8c8', '#c8c08a'],
+  ['#ff7a6b', '#5fd6a4', '#5db8ff', '#b79bff', '#ff9ccf', '#ff9f5a', '#f4f1ea'],
+  ['#5a6488', '#e8505b', '#f4f1ea', '#3d8bff', '#4f9a6a', '#b0b4c8'],
+  ['#ff3b3b', '#ffd400', '#2e8bff', '#ff7a00', '#16c79a'],
+  ['#1f1d2b', '#e8e8ee', '#3a3f58', '#6b1f2e', '#c9b27a'],
+  ['#ff2d55', '#ffd400', '#2ee6a8', '#ff7a00', '#7b5cff', '#f4f4f8']
+];
+// newer classes show up more often than older ones
 function pickCar() {
-  var tot = 0, r, i;
-  CAR_KEYS.forEach(function (k) { tot += CARS[k].w; });
+  var t = repTier(), w = [], tot = 0, i, r;
+  for (i = 0; i <= t; i++) { w.push(i === t ? 3 : i === t - 1 ? 1.5 : .5); tot += w[i]; }
   r = Math.random() * tot;
-  for (i = 0; i < CAR_KEYS.length; i++) { r -= CARS[CAR_KEYS[i]].w; if (r <= 0) return CAR_KEYS[i]; }
-  return 'sedan';
+  for (i = 0; i <= t; i++) { r -= w[i]; if (r <= 0) break; }
+  i = Math.min(i, t);
+  var ts = CLASS_TYPES[i], type = ts[Math.floor(Math.random() * ts.length)], cs = CLASS_COLORS[i];
+  return { type: type, color: CARS[type].color || cs[Math.floor(Math.random() * cs.length)] };
 }
-function carColor(type) { return CARS[type].color || CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)]; }
 function facePoly(cx, cy, a, u, v0, v1, z0, z1, col) {
   var p = orel(cx, cy, a, u, v0), q = orel(cx, cy, a, u, v1);
   poly([P(p.x, p.y, z1), P(q.x, q.y, z1), P(q.x, q.y, z0), P(p.x, p.y, z0)], col, null, 0);
@@ -26,16 +41,16 @@ function facePoly(cx, cy, a, u, v0, v1, z0, z1, col) {
 function drawCar(c) {
   var m = CARS[c.type] || CARS.sedan, a = c.ang, L = m.L, W = m.W, hl = L / 2, hw = W / 2, i;
   var bob = (c.moving && !REDUCE) ? Math.sin(S.t * 16 + c.id) * .7 : 0, zb = 3 + bob;
-  var al = Math.max(0, Math.min(1, (c.x - SPAWNX) / .8, (15 - c.x) / .8));
+  var al = 1;
   if (c.g) al = Math.min(al, Math.max(0, Math.min(1, (c.y - GY1 + .05) / .9)));   // drive into / out of the garage doorway
-  if (c.inWash) al = Math.min(al, Math.max(0, Math.min(1, (WX0 + .2 - c.x) / .5, (c.x - WX1 + .2) / .5)));
+  if (c.inWash) al = Math.min(al, Math.max(0, Math.min(1, (WX0 + .3 - c.x) / .5, (c.x - WX1 + .3) / .5)));
   if (al <= 0) return;
   ctx.globalAlpha = al;
   var sh = [orel(c.x, c.y, a, hl + .05, -hw - .05), orel(c.x, c.y, a, hl + .05, hw + .05), orel(c.x, c.y, a, -hl - .05, hw + .05), orel(c.x, c.y, a, -hl - .05, -hw - .05)];
   poly(sh.map(function (p) { return P(p.x, p.y); }), 'rgba(40,30,80,.22)', null, 0);
   // speed streaks when the lot is hustling
   var fl = flow();
-  if (c.moving && fl > 1.25 && !REDUCE) [-.14, .14].forEach(function (v) {
+  if (c.moving && fl > 1.2 && !REDUCE) [-.14, .14].forEach(function (v) {
     var p = orel(c.x, c.y, a, -hl - .08, v), q = orel(c.x, c.y, a, -hl - .08 - .3 * (fl - 1), v);
     line(P(p.x, p.y, zb + 5), P(q.x, q.y, zb + 5), 2, 'rgba(255,255,255,.7)');
   });
@@ -52,7 +67,7 @@ function drawCar(c) {
     var bp = [orel(c.x, c.y, a, -hl * .9, -hw * .78), orel(c.x, c.y, a, -hl * .9, hw * .78), orel(c.x, c.y, a, -hl * .12, hw * .78), orel(c.x, c.y, a, -hl * .12, -hw * .78)];
     poly(bp.map(function (p) { return P(p.x, p.y, zt + .2); }), shade(col, .62), null, 0);
   }
-  obox(c.x + ca * m.co * L, c.y + sa * m.co * L, a, hl * m.cl, hw * m.cw, zt, zt + m.ch, .74, .8, 0, shade(col, 1.08), function (f) { return f === 0 || f === 2 ? '#bfe6ff' : glass; });
+  obox(c.x + ca * m.co * L, c.y + sa * m.co * L, a, hl * m.cl, hw * m.cw, zt, zt + m.ch, m.low ? .6 : .74, .8, 0, shade(col, 1.08), function (f) { return f === 0 || f === 2 ? '#bfe6ff' : glass; });
   if (m.sign) obox(c.x + ca * m.co * L, c.y + sa * m.co * L, a, .07, .12, zt + m.ch, zt + m.ch + 3.5, 1, 1, 0, '#ffffff', function () { return '#ff7a6b'; });
   var hp = P(c.x, c.y, 18); c.hx = hp.x; c.hy = hp.y;
   if (c.vip) {

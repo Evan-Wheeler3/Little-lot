@@ -50,12 +50,12 @@ function shopHtml() {
   return h;
 }
 function mapHtml() {
-  var cur = S.franchises, last = Math.max(cur + 2, LOCS.length - 1), h = '<p class="pnote">Every franchise opens the next stop on the road. Each one pays more, and each has its own perk.</p><ol class="road">', i;
+  var cur = S.franchises, last = Math.max(cur + 2, LOCS.length - 1), h = '<p class="pnote">Every franchise opens the next stop on the road, each with its own look and its own perk.</p><ol class="road">', i;
   for (i = 0; i <= last; i++) {
     var L = locAt(i), th = THEMES[L.theme], st = i < cur ? 'done' : i === cur ? 'here' : i === cur + 1 ? 'next' : 'locked';
     h += '<li class="stop ' + st + '"><span class="dotm" style="background:' + th.ground[0] + ';border-color:' + (st === 'locked' ? '#cdbf9b' : 'var(--ink)') + '">' + (st === 'done' ? '&#10003;' : i + 1) + '</span>' +
-      '<div><b>' + L.name + '</b><span class="mult">x' + fmtX(L.mult) + ' income</span><small>' + L.perk + '</small>' +
-      (st === 'here' ? '<em class="here">You are here</em>' : st === 'next' ? '<em>' + (starsGain() > 0 ? 'Ready: franchise for +' + starsGain() + ' stars' : 'Franchise to open') + '</em>' : st === 'done' ? '<em class="ok">Visited</em>' : '') + '</div></li>';
+      '<div><b>' + L.name + '</b><small>' + L.perk + '</small>' +
+      (st === 'here' ? '<em class="here">You are here</em>' : st === 'next' ? '<em>' + (starsGain() > 0 ? 'Ready: franchise for x' + fmtX(frMult(S.stars + starsGain())) + ' income' : 'Franchise to open') + '</em>' : st === 'done' ? '<em class="ok">Visited</em>' : '') + '</div></li>';
   }
   h += '</ol><button class="buy" type="button" data-act="fr">Franchising</button>';
   return h;
@@ -88,8 +88,8 @@ function dailyHtml() {
 }
 function arriveHtml() {
   var L = LOC();
-  return '<div class="arrive" style="background:' + THEMES[L.theme].bg[0] + '"><b>x' + fmtX(L.mult) + '</b><span>location income</span></div>' +
-    '<p class="pnote">' + L.perk + '. You have ' + S.stars + ' stars (+' + Math.round(0.35 * S.stars * 100) + '% income) and ' + S.tok + ' tokens to spend on perks.</p>' +
+  return '<div class="arrive" style="background:' + THEMES[L.theme].bg[0] + '"><b>x' + fmtX(frMult()) + '</b><span>income bonus</span></div>' +
+    '<p class="pnote">' + L.perk + '. You have ' + S.tok + ' tokens to spend in the token shop on permanent upgrades.</p>' +
     '<div class="setbtns"><button class="buy" type="button" data-act="close">Open the lot</button><button class="buy ghost" type="button" data-act="perks">Spend tokens</button></div>';
 }
 function showArrival() { openPanel('arrive'); }
@@ -131,7 +131,7 @@ document.getElementById('gemPill').addEventListener('click', function () { openP
 /* ---------- tips: a short tutorial, then the odd hint ---------- */
 var TUT = [
   { t: 'Tap anywhere on the lot to make everyone hustle!', ev: 'tap', n: 5 },
-  { t: 'Fill the meter for FEVER: double speed and double cash. Keep tapping!', ev: 'tap', n: 14 },
+  { t: 'Keep tapping! The fuller the meter, the more every car pays. It drains when you stop.', ev: 'tap', n: 12 },
   { t: 'Open Upgrades to grow your lot.', ev: 'open' },
   { t: 'Buy an upgrade. Yellow buttons are ones you can afford.', ev: 'buy' },
   { t: 'Pinch to zoom, drag to look around.', ev: 'pan', wait: 9 }

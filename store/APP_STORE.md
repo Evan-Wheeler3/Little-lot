@@ -64,20 +64,20 @@ The project already sets: portrait-only on iPhone, all orientations on iPad, `IT
 **Price**: Free
 
 **Promotional text** (can change any time):
-Tap to hustle, hit FEVER, and turn one little parking lot into a franchise that stretches from the beach to Neon City.
+Tap to hustle and turn one little parking lot into a franchise that stretches from the beach to Neon City.
 
 **Description**:
 
 ```
 Run the coziest parking lot in town!
 
-Drivers pull in, park, pop into the market and pay you on the way out. Tap the lot to make everyone hustle, fill the meter to trigger FEVER for double speed and double cash, and watch your little lot grow into a parking empire.
+Drivers pull in, park, pop into the market and pay you on the way out. Keep tapping to make everyone hustle and multiply every fare, and watch your little lot grow into a parking empire.
 
 TAP TO HUSTLE
-Every tap drops coins and speeds up the whole lot. Fill the hustle meter and hit FEVER!
+Steady tapping fills the hustle meter and multiplies all your income, up to x20.
 
 BUILD UP AND OUT
-Paint more bays, stack garage floors, open a car wash with spinning brushes, and install EV chargers. Every upgrade shows up on your lot.
+Paint new rows of bays, stack garage floors, open a multi-lane car wash, install EV chargers, and grow a corner store into a mega mall. The road widens into a highway and the town fills in around you.
 
 UPGRADE EVERYTHING
 Parking fees, advertising, wider lanes, faster sidewalks, express shopping, valets and shop deals. Endless upgrades with milestone bonuses.
@@ -86,13 +86,13 @@ HIRE STAFF
 A concierge to greet golden cars, a promoter for rush hour, a hype crew and a night manager keep the lot running for you.
 
 FRANCHISE ACROSS THE MAP
-Sell your lot for stars and open the next one: Palm Beach, Downtown, Frosty Peaks, Cactus Springs, Neon City and Harbor Point. Each stop pays more and has its own perk.
+Sell your lot for a bigger income bonus and tokens for permanent upgrades, then open the next one: Palm Beach, Downtown, Frosty Peaks, Cactus Springs, Neon City and Harbor Point. Each stop pays more and has its own perk.
 
 EARN WHILE YOU ARE AWAY
 Your lot keeps parking cars while you are gone. Come back to a pile of cash, a daily gift and new goals to chase.
 
 LITTLE TOUCHES
-Day turns to night and the lot lights up. Golden cars, rush hours, cloud shadows, eight kinds of cars, cheerful music and satisfying sounds.
+Day turns to night and the lot lights up. Golden cars, rush hours, six classes of cars from beaters to supercars, cheerful music and satisfying sounds.
 
 No ads. Play offline. Optional account to sync between devices.
 ```
@@ -104,8 +104,8 @@ No ads. Play offline. Optional account to sync between devices.
 **Privacy policy URL**: `<SITE_URL>privacy.html`
 
 **Screenshots** (already made, in `store/screenshots/`):
-- iPhone 6.7" (1290 × 2796): `iphone67-1-hustle.png` … `iphone67-5-night.png`
-- iPad 13" (2064 × 2752): `ipad13-1-hustle.png` … `ipad13-5-night.png`
+- iPhone 6.7" (1290 × 2796): `iphone67-1-hustle.png` … `iphone67-5-map.png`
+- iPad 13" (2064 × 2752): `ipad13-1-hustle.png` … `ipad13-5-map.png`
 
 Regenerate them after visual changes with the Playwright script described in the README, or take them from the simulator.
 

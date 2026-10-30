@@ -29,7 +29,7 @@ function sfx(k, x) {
     case 'buy': [523, 659, 784].forEach(function (f, i) { tone(f, n + i * .055, .14, 'square', .045); }); break;
     case 'claim': [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, n + i * .07, .22, 'sine', .09); }); break;
     case 'vip': tone(440, n, .14, 'square', .06); tone(554, n + .16, .2, 'square', .06); [1320, 1760].forEach(function (f, i) { tone(f, n + .3 + i * .06, .18, 'sine', .07); }); break;
-    case 'fever': tone(300, n, .5, 'sawtooth', .05, 1400); [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone(f, n + .3 + i * .06, .25, 'triangle', .08); }); break;
+    case 'max': tone(300, n, .5, 'sawtooth', .05, 1400); [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone(f, n + .3 + i * .06, .25, 'triangle', .08); }); break;
     case 'rush': [0, .18, .36].forEach(function (d) { tone(880, n + d, .12, 'square', .05); }); break;
     case 'no': tone(170, n, .16, 'sawtooth', .06, 120); break;
     case 'franchise': [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tone(f, n + i * .11, .35, 'triangle', .09); }); break;

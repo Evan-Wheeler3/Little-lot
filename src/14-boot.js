@@ -18,15 +18,16 @@ function hud() {
   if (rt !== lastRate) { lastRate = rt; elRate.textContent = rt; }
   var txt = parkedCount() + ' / ' + totalSpots();
   if (txt !== lastParked) { lastParked = txt; elParked.textContent = txt; }
-  starPill.hidden = !(S.stars > 0); if (S.stars > 0) elStars.textContent = S.stars;
+  starPill.hidden = !(S.stars > 0); if (S.stars > 0) elStars.textContent = 'x' + fmtX(frMult());
   var bo = boostOn(); boostChip.hidden = !bo; if (bo) boostT.textContent = fmtClock((S.boostEnd - Date.now()) / 1000);
   // the hustle meter
-  var hs = S.fever > 0 ? 'f' + Math.ceil(S.fever) : 'h' + Math.round(S.hype * 50);
+  var hs = Math.round(S.hype * 200) + '|' + Math.ceil(S.hlock) + '|' + hustleCap();
   if (hs !== lastHype) {
     lastHype = hs;
-    hypeFill.style.width = Math.round(S.hype * 100) + '%';
-    hypeEl.classList.toggle('fever', S.fever > 0);
-    hypeTxt.textContent = S.fever > 0 ? 'FEVER! x2 cash · ' + Math.ceil(S.fever) + 's' : S.hype > .02 ? 'Hustle x' + flow().toFixed(1) + ' · keep tapping!' : 'Tap the lot to hustle';
+    hypeFill.style.width = (S.hype * 100).toFixed(1) + '%';
+    hypeEl.classList.toggle('fever', S.hype > .98);
+    hypeEl.classList.toggle('on', S.hype > .02);
+    hypeTxt.textContent = S.hlock > 0 ? 'Hustle x' + hustleCap() + ' locked · ' + Math.ceil(S.hlock) + 's' : S.hype > .02 ? 'Hustle x' + hustleMul().toFixed(1) + ' income · max x' + hustleCap() : 'Tap the lot to hustle · up to x' + hustleCap() + ' income';
   }
   recenterBtn.hidden = !S.view.user;
   dailyDot.hidden = !dailyReady();
@@ -90,7 +91,6 @@ function fit() {
 window.addEventListener('resize', fit);
 if (window.LLAuth && window.LLAuth.slotKey) saveKey = window.LLAuth.slotKey();
 var saved = readSave(saveKey);
-buildDecor();
 applySave(saved);
 fit(); buildTray(); stepCam(0); S.view.z = defaultZoom();
 if (saved && saved.time) showAway((Date.now() - saved.time) / 1000, saved.time);

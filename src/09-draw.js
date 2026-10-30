@@ -1,58 +1,17 @@
-/* ---------- the main lot: markings, camera and the frame ---------- */
-function drawMarkings() {
-  var n = COLS(), c, ex;
-  poly([P(X0, 2), P(X1, 2), P(X1, 3), P(X0, 3)], '#7b87a8');
-  poly([P(2, 1), P(2 + n, 1), P(2 + n, 2), P(2, 2)], '#9eaac8');
-  poly([P(2, 3), P(2 + n, 3), P(2 + n, 4), P(2, 4)], '#9eaac8');
-  poly([P(2, 0), P(2 + n, 0), P(2 + n, 1), P(2, 1)], '#ece3cc');
-  if (n < 6) {   // bays that are not built yet: a dashed outline
-    ctx.setLineDash([5, 5]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineJoin = 'round';
-    [1, 3].forEach(function (yy) {
-      var a = P(2 + n + .06, yy + .06), b = P(8 - .06, yy + .06), c2 = P(8 - .06, yy + .94), d = P(2 + n + .06, yy + .94);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.stroke();
-    });
-    ctx.setLineDash([]);
-  }
-  if (S.lvl.walk >= 3) for (c = 3; c < 2 + n; c++) for (ex = 0; ex < 4; ex++) {   // zebra crossings where shoppers cross the lane
-    var zy = 2.06 + ex * .25;
-    poly([P(c - .16, zy), P(c + .16, zy), P(c + .16, zy + .13), P(c - .16, zy + .13)], 'rgba(255,255,255,.8)', null, 0);
-  }
-  S.spots.forEach(function (s) {   // EV bays are painted green
-    if (!unlocked(s) || !evBay(s)) return;
-    poly([P(s.x + .06, s.y + .06), P(s.x + .94, s.y + .06), P(s.x + .94, s.y + .94), P(s.x + .06, s.y + .94)], 'rgba(47,174,124,.28)', null, 0);
-  });
-  if (S.lvl.sign >= 1) S.spots.forEach(function (s) {
-    if (!unlocked(s) || s.car) return;
-    poly([P(s.x + .1, s.y + .08), P(s.x + .9, s.y + .08), P(s.x + .9, s.y + .92), P(s.x + .1, s.y + .92)], 'rgba(88,224,138,.42)', null, 0);
-  });
-  for (c = 2; c <= 2 + n; c++) {
-    line(P(c, 1.06), P(c, 1.94), 2.4, 'rgba(255,255,255,.9)', 'butt');
-    line(P(c, 3.06), P(c, 3.94), 2.4, 'rgba(255,255,255,.9)', 'butt');
-  }
-  [-1.2, 0.3, 8.3, 9.4].forEach(function (ax) {
-    poly([P(ax - .45, 2.43), P(ax + .05, 2.43), P(ax + .05, 2.25), P(ax + .5, 2.5), P(ax + .05, 2.75), P(ax + .05, 2.57), P(ax - .45, 2.57)], 'rgba(255,255,255,.5)', null, 0);
-  });
-}
-
-
-function drawStreetLamp(x, y) {
-  prism(x - .04, y - .04, 0, x + .04, y + .04, 44, '#6b6590');
-  prism(x - .04, y - .04, 44, x + .04, y + .34, 47, '#6b6590');
-  prism(x - .08, y + .22, 40, x + .08, y + .4, 45, '#fff3c4');
-}
-var LAMPS = [[-9.6, 1.42], [-1.6, 1.42], [9.4, 1.42], [12.8, 3.58]];
-
 /* ---------- camera ---------- */
 var T = { ox: 0, oy: 0, k: 1, dpr: 1 };
-// what the camera frames by default: the lot, plus the garage and car wash once they are built
+// the camera frames what is built: the lot, the market, the road, and the garage and car wash once they exist
 function camTarget() {
-  var b = { l: -56, t: 8, r: 734, b: 420 };
-  if (S.deckAnim > .02) { b.l = -140; b.t = Math.min(8, -226 - S.deckAnim * DH - 18); }
-  if (S.lvl.wash) b.b = 490;
-  return b;
+  var ex = EXX(), x0 = S.deckAnim > .02 ? GX0 - .8 : -2.6, x1 = S.lvl.wash ? WRX + 1 : Math.max(ex + 1.5, shopSpan()[1] + 1);
+  var y0 = topY() - 3.6, y1 = RY + ROAD().w + 1.2, zt = Math.max([30, 36, 56, 80, 200][shopTier()], S.deckAnim * DH + 30);
+  var l = P(x0, y1).x, r = P(x1, y0).x, t = Math.min(P(x0, y0, zt * .6).y, P(GX1, GY0, S.deckAnim > .02 ? S.deckAnim * DH + 40 : 0).y), b = P(x1, y1).y;
+  return { l: l - 20, t: t - 10, r: r + 20, b: b + 10 };
 }
-// phones held upright get a closer look at the lot; pinch out to see everything
-function defaultZoom() { return S.w < S.h ? Math.min(1.6, Math.max(1, S.h / S.w * .7)) : 1; }
+// phones held upright get a closer look; pinch out to see everything
+function defaultZoom() {
+  var c = S.cam, availH = Math.max(120, S.h - 92 - 150), fit = Math.min(S.w / (c.r - c.l), availH / (c.b - c.t));
+  return Math.max(1, Math.min(2, .74 / fit));
+}
 function stepCam(dt) {
   var t = camTarget(), k = S.camSet ? Math.min(1, dt * 3) : 1, v = S.view, e;
   for (e in t) S.cam[e] += (t[e] - S.cam[e]) * k;
@@ -62,9 +21,9 @@ function stepCam(dt) {
     v.z += (defaultZoom() - v.z) * q; v.x += (0 - v.x) * q; v.y += (0 - v.y) * q;
   }
 }
-var ZMIN = .5, ZMAX = 4;
+var ZMIN = .45, ZMAX = 4;
 function clampView() {
-  var v = S.view, c = S.cam, w = (c.r - c.l) * .65, h = (c.b - c.t) * .65 + 150;
+  var v = S.view, c = S.cam, w = (c.r - c.l) * .7 + 200, h = (c.b - c.t) * .7 + 200;
   v.z = Math.max(ZMIN, Math.min(ZMAX, v.z));
   v.x = Math.max(-w, Math.min(w, v.x)); v.y = Math.max(-h, Math.min(h, v.y));
 }
@@ -105,19 +64,20 @@ function nightPass() {
   if (dk < .05) return;
   ctx.setTransform(T.k, 0, 0, T.k, T.ox, T.oy);
   ctx.globalCompositeOperation = 'lighter';
-  var a = dk, p;
-  LAMPS.forEach(function (l) { p = P(l[0], l[1] + .3, 40); glow(p.x, p.y + 20, 70, 'rgba(255,226,150,.55)', a); });
-  if (S.lvl.sign >= 1) activeSpots().forEach(function (s) { p = P(s.x + .5, s.row === 'N' ? 1.08 : 3.92, 38); glow(p.x, p.y + 14, 46, 'rgba(255,230,160,.5)', a); });
-  for (var i = 0; i < COLS(); i++) { p = P(2.5 + i, .9, 10); glow(p.x, p.y, 30, 'rgba(255,220,130,.6)', a); }
-  p = P(-3.45, 3.62, 46); glow(p.x, p.y, 26, freeCount() ? 'rgba(90,240,140,.7)' : 'rgba(255,90,90,.7)', a);
-  if (S.lvl.wash) { p = P((WX0 + WX1) / 2, WY + .5, 14); glow(p.x, p.y, 56, 'rgba(120,210,255,.55)', a); }
-  if (S.deckAnim > .5) { p = P(GOUT - .5, GY1, 12); glow(p.x, p.y, 60, 'rgba(255,220,140,.5)', a); }
-  S.cars.forEach(function (c) {
-    if (hiddenCar(c) || c.state === 'parked' || c.state === 'wantout') return;
+  var a = dk, p, ex = EXX();
+  lotLamps().forEach(function (l) { p = P(l[0], l[1], 36); glow(p.x, p.y + 16, 60, 'rgba(255,230,160,.5)', a); });
+  [-16.5, -12.6, -9.8, 2.3, 6.4, 14.1, 18.3, 23, 27].forEach(function (x) { p = P(x, RY + .1, 40); glow(p.x, p.y + 18, 64, 'rgba(255,226,150,.45)', a); });
+  shopDoors().forEach(function (dx) { p = P(dx, shopFrontY() + .1, 10); glow(p.x, p.y, 34, 'rgba(255,220,130,.6)', a); });
+  p = P(-2, 9.75, 70); glow(p.x, p.y, 30, freeCount() ? 'rgba(90,240,140,.6)' : 'rgba(255,90,90,.6)', a);
+  if (S.lvl.wash) WYS.slice(0, washLanes()).forEach(function (wy) { p = P(WX1, wy, 10); glow(p.x, p.y, 40, 'rgba(120,210,255,.5)', a); });
+  if (S.deckAnim > .5) for (var d = 0; d < Math.floor(S.deckAnim); d++) { p = P((GX0 + GX1) / 2, GY1, d * DH + 20); glow(p.x, p.y, 70, 'rgba(255,230,160,.35)', a); }
+  S.cars.concat(S.traffic).forEach(function (c) {
+    if (hiddenCar(c) || c.state === 'parked' || c.state === 'wantout' || c.inWash) return;
     var m = CARS[c.type] || CARS.sedan, f = orel(c.x, c.y, c.ang, m.L / 2 + .45, 0);
     p = P(f.x, f.y, 3); glow(p.x, p.y, 26, 'rgba(255,240,180,.55)', a);
   });
-  DECOR.forEach(function (d) { if (d.t === 'neon' && onScreen(d.x, d.y)) { p = P(d.x + d.w / 2, d.y + d.d, d.h * .55); glow(p.x, p.y, 80, hexA(d.n, .35), a); } });
+  var n = townShown();
+  for (var i = 0; i < n; i++) { var q = TOWN[i]; if (q.t === 'neon' && onScreen(q.x, q.y)) { p = P(q.x + q.w / 2, q.y + q.d, q.h * .55); glow(p.x, p.y, 80, hexA(q.n, .35), a); } }
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -128,7 +88,7 @@ function drawGem(x, y, r) {
 }
 function draw() {
   computeT();
-  var k = T.k, th = TH();
+  var k = T.k, th = TH(), i;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   var g = ctx.createLinearGradient(0, 0, 0, cv.height); g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
@@ -137,33 +97,36 @@ function draw() {
   ZOFF = 0;
   drawGround();
 
-  var back = [], front = [], objs = [];
-  DECOR.forEach(function (d) { if (onScreen(d.x, d.y)) (isFront(d) ? front : back).push({ d: d.x + d.y, f: function () { drawDecor(d); } }); });
-  if (S.deckAnim > .02) back.push({ d: GX1 + GY1, f: drawGarage });
-  front.push({ d: -3, f: drawBooth }, { d: -2.9, f: drawGate }, { d: -1.5, f: drawEntranceSign });
-  if (S.lvl.ads >= 3) front.push({ d: 3.6, f: drawBillboard });
-  if (S.lvl.valet >= 1) front.push({ d: 1.8, f: drawValet });
+  // three passes, back to front: everything north of the road, then the road, then the far side
+  var north = [], road = [], south = [], ex = EXX(), sp = shopSpan();
+  var put = function (y, o) { (y < RY - .45 ? north : y < RY + 8 ? road : south).push(o); };
+  var n = townShown();
+  for (i = 0; i < n; i++) (function (p, i) { if (onScreen(p.x, p.y)) put(p.y + p.d, { d: p.x + p.y + p.d, f: function () { drawPlot(p, i); } }); })(TOWN[i], i);
+  STREET_TREES.forEach(function (t) { if (onScreen(t[0], t[1])) north.push({ d: t[0] + t[1], f: function () { drawTreeKind(t[2] ? TH().tree2 : TH().tree, t[0], t[1], .75); } }); });
+  if (S.deckAnim > .02) north.push({ d: GX0 + GY1, f: drawGarage });
+  north.push({ d: sp[0] + shopFrontY() - .2, f: drawMarket });
+  if (S.lvl.wash) north.push({ d: WX0 + WYS[0] + .55, f: drawWash });
+  north.push({ d: -1.85 + 8.75, f: drawBooth });
+  road.push({ d: ENX - .5 + 9.35, f: function () { drawArm(ENX - .5, S.gate); } }, { d: ex - .5 + 9.35, f: function () { drawArm(ex - .5, S.gate2 || 0); } }, { d: -2 + 9.75, f: drawEntranceSign });
+  if (S.lvl.ads >= 3) road.push({ d: -11.2 + 9.2, f: drawBillboard });
+  if (S.lvl.valet >= 1) north.push({ d: -1.85 + 7.6, f: drawValet });
+  lotLamps().forEach(function (l) { (l[1] > 9.4 ? road : north).push({ d: l[0] + l[1], f: function () { drawLotLamp(l[0], l[1]); } }); });
+  S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) north.push({ d: s.x + s.y + (s.row === 'N' ? .1 : .9), f: function () { drawCharger(s); } }); });
+  S.cars.forEach(function (c) { if (!hiddenCar(c)) put(c.y, { d: c.x + c.y, f: function () { drawCar(c); } }); });
+  S.traffic.forEach(function (c) { if (onScreen(c.x, c.y)) road.push({ d: c.x + c.y, f: function () { drawCar(c); } }); });
+  S.walkers.forEach(function (w) { if (w.state !== 'inside') north.push({ d: w.x + w.y + .05, f: function () { drawWalker(w); } }); });
+  roadObjects(road);
   var byDepth = function (a, b) { return a.d - b.d; };
-  back.sort(byDepth); back.forEach(function (o) { o.f(); });
-
-  drawMarkings();
-  objs.push({ d: -5, f: function () { drawShops(0); } });
-  LAMPS.forEach(function (l) { objs.push({ d: l[0] + l[1], f: function () { drawStreetLamp(l[0], l[1]); } }); });
-  if (S.lvl.sign >= 2) objs.push({ d: 1.6, f: function () { drawPlanter(1.6, .5); } }, { d: 2.6 + COLS(), f: function () { drawPlanter(2.4 + COLS(), .5); } });
-  if (S.lvl.wash) objs.push({ d: WX1 + WY + .5, f: drawWash });
-  if (S.lvl.sign >= 1) S.spots.forEach(function (s) { if (unlocked(s)) objs.push({ d: s.x + .5 + (s.row === 'N' ? 1.08 : 3.92), f: function () { drawLamp(s); } }); });
-  S.spots.forEach(function (s) { if (unlocked(s) && evBay(s)) objs.push({ d: s.x + .16 + (s.row === 'N' ? 1.1 : 3.9), f: function () { drawCharger(s); } }); });
-  S.cars.forEach(function (c) { if (!hiddenCar(c)) objs.push({ d: c.x + c.y, f: function () { drawCar(c); } }); });
-  S.walkers.forEach(function (w) { if (w.state !== 'inside') objs.push({ d: w.x + w.y + .05, f: function () { drawWalker(w); } }); });
-  objs.sort(byDepth); objs.forEach(function (o) { o.f(); });
-  front.sort(byDepth); front.forEach(function (o) { o.f(); });
+  [north, road, south].forEach(function (L) { L.sort(byDepth); L.forEach(function (o) { o.f(); }); });
   nightPass();
   ctx.setTransform(k, 0, 0, k, T.ox, T.oy);
+  var hot = S.hype > .5;
   S.fx.forEach(function (f) {
     var q;
     if (f.kind === 'bub') { q = P(f.x + f.vx * f.t * .02, f.y, f.z + f.t * 22); ctx.globalAlpha = Math.max(0, 1 - f.t / 1.4); circle(q.x, q.y, 2.5 + f.t * 2, 'rgba(255,255,255,.85)'); }
     else if (f.kind === 'gem') { q = P(f.x, f.y, 50 + f.t * 40); ctx.globalAlpha = Math.max(0, 1 - f.t / 1.4); drawGem(q.x, q.y, 9); label('+1', q.x + 18, q.y, 13, '#fff'); }
-    else if (f.kind === 'ring') { ctx.globalAlpha = Math.max(0, 1 - f.t / .7); ctx.beginPath(); ctx.arc(f.lx, f.ly, 6 + f.t * 70, 0, Math.PI * 2); ctx.lineWidth = 3; ctx.strokeStyle = S.fever > 0 ? '#ff9ccf' : '#ffffff'; ctx.stroke(); }
+    else if (f.kind === 'pop') { q = P(f.x, f.y, f.z); var r = f.t / .8; ctx.globalAlpha = Math.max(0, 1 - r); for (var j = 0; j < 8; j++) { var an = j * Math.PI / 4; circle(q.x + Math.cos(an) * 40 * r, q.y + Math.sin(an) * 20 * r - 20 * r, 5 * (1 - r) + 1, j % 2 ? '#ffd04a' : '#ffffff'); } }
+    else if (f.kind === 'ring') { ctx.globalAlpha = Math.max(0, 1 - f.t / .7); ctx.beginPath(); ctx.arc(f.lx, f.ly, 6 + f.t * 70, 0, Math.PI * 2); ctx.lineWidth = 3; ctx.strokeStyle = hot ? '#ffb0dc' : '#ffffff'; ctx.stroke(); }
     else if (f.kind === 'tapc') { ctx.globalAlpha = Math.max(0, 1 - f.t / .7); label(f.txt, f.lx, f.ly - 14 - f.t * 40, 13, '#ffe38a'); }
     ctx.globalAlpha = 1;
   });
@@ -171,15 +134,15 @@ function draw() {
     var q = P(p.x, p.y, 34 + p.t * 30), s = p.big ? 1.5 : 1;
     ctx.globalAlpha = Math.min(1, (1.2 - p.t) * 2.2);
     circle(q.x - 17 * s, q.y, 8.5 * s, '#ffd04a', 2.4); label('$', q.x - 17 * s, q.y + .5, 11 * s, '#3b2f5c');
-    label(p.txt, q.x + 6 * s, q.y, 16 * s, S.fever > 0 ? '#ffd1ec' : '#fff');
+    label(p.txt, q.x + 6 * s, q.y, 16 * s, hot ? '#ffd1ec' : '#fff');
     ctx.globalAlpha = 1;
   });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   var dpr = T.dpr;
-  if (S.fever > 0) {   // Fever: a pink glow pulsing at the edges
-    var pu = REDUCE ? .5 : .5 + .5 * Math.sin(S.t * 8);
+  if (S.hype > .05) {   // hustle: a warm glow at the edges that grows with the meter
+    var pu = REDUCE ? .5 : .5 + .5 * Math.sin(S.t * (4 + 6 * S.hype));
     var rg = ctx.createRadialGradient(cv.width / 2, cv.height / 2, Math.min(cv.width, cv.height) * .35, cv.width / 2, cv.height / 2, Math.max(cv.width, cv.height) * .75);
-    rg.addColorStop(0, 'rgba(255,120,200,0)'); rg.addColorStop(1, 'rgba(255,120,200,' + (.22 + .12 * pu) + ')');
+    rg.addColorStop(0, 'rgba(255,140,190,0)'); rg.addColorStop(1, 'rgba(255,140,190,' + (S.hype * (.18 + .08 * pu)) + ')');
     ctx.fillStyle = rg; ctx.fillRect(0, 0, cv.width, cv.height);
   }
   S.fx.forEach(function (f) {
