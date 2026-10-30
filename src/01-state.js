@@ -27,7 +27,7 @@ var S = {
 var GS = [];   // garage slots: { car, color }
 // level ceilings. Parking fee and shop deals never run out; the speed lines are long but finite
 // Only the main lot's bays (the lot is only so wide) and the three guidance steps have a ceiling; everything else goes on forever
-var MAXL = { space: 2, garage: Infinity, fee: Infinity, ads: Infinity, gate: Infinity, sign: 3, walk: Infinity, express: Infinity, valet: Infinity, shop: Infinity };
+var MAXL = { space: 2, garage: 99, fee: Infinity, ads: Infinity, gate: Infinity, sign: 3, walk: Infinity, express: Infinity, valet: Infinity, shop: Infinity };
 
 /* ---------- numbers ---------- */
 var SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
@@ -71,7 +71,8 @@ function demand() { return Math.min(14, 0.42 * Math.pow(1.06, S.lvl.ads) * Math.
 function gapBase() { return 1 / demand(); }
 function dwellAvg() { return 2 * doorTime() + 4.8 / walkSpeed() + visitAvg(); }
 function dwellGarage() { return dwellAvg() + 21 / walkSpeed(); }   // the garage is a longer walk from the market
-function maxDecks() { return Infinity; }
+// the garage can only go so high until you franchise: a nudge to start over, not a wall
+function maxDecks() { return 4 + 3 * S.franchises; }
 function garCap() { return S.lvl.garage * PERDECK; }
 function ensureSpots() {
   if (S.spots.length) return;

@@ -23,7 +23,7 @@ var ITEMS = {
     lvl: function () { return S.lvl.garage; }, max: function () { return maxDecks(); },
     cost: function (l) { return 400 * Math.pow(3.4, l); },
     now: function () { var n = S.lvl.garage; return n ? n + (n === 1 ? ' floor, ' : ' floors, ') + garCap() + ' garage spaces' : 'No garage yet'; },
-    next: function () { var n = S.lvl.garage; return n ? 'Floor ' + (n + 1) + ': ' + PERDECK + ' more spaces' : 'A garage beside the market, ' + PERDECK + ' spaces a floor'; },
+    next: function () { var n = S.lvl.garage; return n >= maxDecks() ? 'Franchise to build higher' : n ? 'Floor ' + (n + 1) + ': ' + PERDECK + ' more spaces' : 'A garage beside the market, ' + PERDECK + ' spaces a floor'; },
     apply: function () { S.lvl.garage++; ensureSlots(); } },
   gate: { tab: 'speed', name: 'Wider lanes', tint: '#ffc7bd', icon: 'gate', multi: true,
     lvl: function () { return S.lvl.gate; }, max: function () { return MAXL.gate; },
@@ -100,14 +100,14 @@ function note(t) {
 
 function btnHtml(k) {
   var p = plan(k, S.qty);
-  if (p.maxed) return 'Maxed';
+  if (p.maxed) return k === 'garage' ? 'Franchise for more' : 'Maxed';
   return '<span class="c">$</span>' + fmt(p.cost) + (p.n > 1 ? ' <small>x' + p.n + '</small>' : '');
 }
 function cardHtml(k) {
   var it = ITEMS[k], l = it.lvl(), mx = it.max(), pips = '';
   if (mx <= 12) { for (var i = 0; i < mx; i++) pips += '<span class="pip' + (i < l ? ' on' : '') + '"></span>'; }
   else pips = '<span class="lbl2">Level ' + l + '</span>';
-  var maxed = l >= mx, sub = maxed ? 'Fully upgraded' : it.next();
+  var maxed = l >= mx, sub = maxed && k !== 'garage' ? 'Fully upgraded' : it.next();
   if (it.ms) sub += ' · ' + msNote(l);
   return '<article class="card" id="card-' + k + '"><h3><span class="ico" style="background:' + it.tint + '">' + ICON[it.icon] + '</span>' + it.name + '</h3>' +
     '<p class="now">' + it.now() + '</p><div class="pips" aria-hidden="true">' + pips + '</div>' +
@@ -132,7 +132,7 @@ function frHtml() {
   var base = Math.pow(starsTotal(), 3) * STAR_BASE, nxt = Math.pow(starsTotal() + 1, 3) * STAR_BASE;
   var pct = Math.max(0, Math.min(100, (S.lifetime - base) / (nxt - base) * 100));
   var h = '<div class="fr"><h3><span style="color:#f0a300;-webkit-text-stroke:1.5px var(--ink)">&#9733;</span> Franchise</h3>' +
-    '<p>Sell this lot and open a new one from scratch. Each star adds 35% to all income forever, you get a token per star to spend on perks, and every franchise starts you off richer.</p>' +
+    '<p>Sell this lot and open a new one from scratch. Each star adds 35% to all income forever, you get a token per star to spend on perks, and every franchise lets you build 3 more garage floors.</p>' +
     '<div class="row"><div class="stat"><small>Stars</small>' + S.stars + '</div>' +
     '<div class="stat"><small>Income bonus</small>+' + Math.round((mult() - 1) * 100) + '%</div>' +
     '<div class="stat"><small>Earned this lot</small>$<span id="fr-run">' + fmt(S.totalRun) + '</span></div>' +
