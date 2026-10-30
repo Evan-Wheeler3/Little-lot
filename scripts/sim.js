@@ -56,7 +56,7 @@ const HOURS = +process.argv[2] || 3, TAPS = +(process.argv[3] || 2);
         if (['garage1','wash1','space3','space7','ev1','garage4','rep5','shop15','gate5','gate15'].includes(key) && !firsts[key + '@' + S.franchises]) firsts[key + '@' + S.franchises] = Math.round((simT - runStart) / 60 * 10) / 10;
       }
       const g = L.starsGain(), runMin = (simT - runStart) / 60;
-      if (g >= 1 && ((g >= Math.max(1, Math.ceil(S.stars * 0.5)) && runMin >= 10) || runMin > 60)) {   // like a casual player: sell when the boost is decent
+      if (g >= 1 && runMin >= 2) {   // sell as soon as the next boost tier is ready
         runs.push({ run: S.franchises, min: Math.round(runMin), gain: g, earned: L.fmt(S.totalRun), loc: L.LOC().name });
         L.doFranchise(); runStart = simT;
         ['hustle','gold','tap','blue','head','lucky','rush','night','sleep'].forEach(k => { for (let z = 0; z < 20; z++) if (!L.buyPerk(k)) break; });
@@ -67,7 +67,7 @@ const HOURS = +process.argv[2] || 3, TAPS = +(process.argv[3] || 2);
   for (let m = 0; m < HOURS * 60; m++) {
     await p.evaluate(() => simStep(60));
     if (m % 5 === 4 || m < 5) {
-      const r = await p.evaluate(() => { const L = __ll, S = L.S; return { t: Math.round(simT / 60), fr: S.franchises, stars: S.stars, money: L.fmt(S.money), rate: L.fmt(L.econRate()), fee: S.lvl.fee, ads: S.lvl.ads, gar: S.lvl.garage, wash: S.lvl.wash, cars: S.served, gems: S.gems, goals: Object.values(S.goal).reduce((a,b)=>a+b,0), gain: L.starsGain() }; });
+      const r = await p.evaluate(() => { const L = __ll, S = L.S; return { t: Math.round(simT / 60), fr: S.franchises, stars: S.stars, boost: L.mult ? L.mult() : 0, money: L.fmt(S.money), rate: L.fmt(L.econRate()), fee: S.lvl.fee, ads: S.lvl.ads, gar: S.lvl.garage, wash: S.lvl.wash, cars: S.served, gems: S.gems, goals: Object.values(S.goal).reduce((a,b)=>a+b,0), gain: L.starsGain() }; });
       console.log(JSON.stringify(r));
     }
   }

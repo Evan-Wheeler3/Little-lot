@@ -47,7 +47,7 @@ var PDEF = {
   gold: { big: function () { return ['+' + 25 * S.perk.gold + '%', 'all income']; }, up: '+25%', name: 'Better rates', tint: '#ffe38a', icon: 'fee', cost: function (l) { return Math.ceil(2 * Math.pow(1.6, l)); },
     now: function () { return 'All income +' + 25 * S.perk.gold + '%'; }, next: function () { return 'All income +' + 25 * (S.perk.gold + 1) + '%'; } },
   tap: { big: function () { return [(tapPower() * 100).toFixed(1) + '%', 'meter per tap']; }, up: '+1%', name: 'Quick fingers', tint: '#ffd9c7', icon: 'tap', cost: function (l) { return Math.ceil(2 * Math.pow(1.6, l)); },
-    now: function () { return 'Each tap fills ' + (tapPower() * 100).toFixed(1) + '% of the meter'; }, next: function () { return 'Each tap fills ' + (5 * (1 + 0.2 * (S.perk.tap + 1))).toFixed(1) + '%'; } },
+    now: function () { return 'Each tap fills ' + (tapPower() * 100).toFixed(1) + '% of the meter'; }, next: function () { return 'Each tap fills ' + (6 * (1 + 0.2 * (S.perk.tap + 1))).toFixed(1) + '%'; } },
   head: { big: function () { return ['$' + fmt(25 + headStart()), 'starting cash']; }, up: 'x3 cash', name: 'Head start', tint: '#d6f0c8', icon: 'space', cost: function (l) { return Math.ceil(Math.pow(3, l)); },
     now: function () { return 'New lots start with $' + fmt(25 + headStart()); }, next: function () { return 'New lots start with $' + fmt(25 + 200 * Math.pow(3, S.perk.head)); } },
   lucky: { big: function () { return ['x' + fmtX(1 + 0.3 * S.perk.lucky), 'golden car bonus']; }, up: '+30%', name: 'Lucky drivers', tint: '#fff0a8', icon: 'goal', cost: function (l) { return Math.ceil(2 * Math.pow(1.75, l)); },

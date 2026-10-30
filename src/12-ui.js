@@ -32,7 +32,7 @@ var ITEMS = {
     cost: function (l) { return 600 * Math.pow(3.6, l); }, show: function () { return S.lvl.garage ? S.lvl.garage + (S.lvl.garage === 1 ? ' floor, ' : ' floors, ') + garCap() + ' bays' : 'Not built'; } },
   wash: { tab: 'build', name: 'Car wash', tint: '#c7f0ff', icon: 'wash', multi: true, ms: true,
     what: 'Leaving drivers stop for a wash. Another lane opens at levels 10, 25 and 50.',
-    cost: function (l) { return 15000 * Math.pow(1.55, l); }, show: function () { return S.lvl.wash ? washLanes() + (washLanes() > 1 ? ' lanes' : ' lane') + ', $' + fmtSmall(washPrice() / rushFee()) + ' a wash' : 'Not built'; } },
+    cost: function (l) { return 15000 * Math.pow(1.6, l); }, show: function () { return S.lvl.wash ? washLanes() + (washLanes() > 1 ? ' lanes' : ' lane') + ', $' + fmtSmall(washPrice() / rushFee()) + ' a wash' : 'Not built'; } },
   shop: { tab: 'build', name: 'Market', tint: '#ffd9c7', icon: 'shop', multi: true, ms: true,
     what: 'Better shops, and shoppers tip you every visit. The building grows at levels 5, 15, 30 and 60.',
     cost: function (l) { return 80 * Math.pow(1.62, l); }, show: function () { return S.lvl.shop ? '$' + fmtSmall(fee() / rushFee() * tipRate()) + ' tip a visit' : 'No tips yet'; } },
@@ -50,13 +50,13 @@ var ITEMS = {
     cost: function (l) { return 120 * Math.pow(2.1, l); }, show: function () { return doorTime().toFixed(2) + 's per door'; } },
   fee: { tab: 'biz', name: 'Parking fee', tint: '#ffe38a', icon: 'fee', multi: true, ms: true,
     what: 'Every car pays 15% more.',
-    cost: function (l) { return 14 * Math.pow(1.5, l); }, show: function () { return '$' + fmtSmall(fee() / rushFee()) + ' a car'; } },
+    cost: function (l) { return 14 * Math.pow(1.6, l); }, show: function () { return '$' + fmtSmall(fee() / rushFee()) + ' a car'; } },
   ads: { tab: 'biz', name: 'Advertising', tint: '#ffd1ec', icon: 'ads', multi: true, ms: true,
     what: 'About 6% more drivers want to park.',
-    cost: function (l) { return 30 * Math.pow(1.56, l); }, show: function () { return Math.round(demand() / (S.rush > 0 ? 2.5 : 1) * 60) + ' drivers a minute'; } },
+    cost: function (l) { return 30 * Math.pow(1.7, l); }, show: function () { return Math.round(demand() / (S.rush > 0 ? 2.5 : 1) * 60) + ' drivers a minute'; } },
   rep: { tab: 'biz', name: 'Reputation', tint: '#fff0a8', icon: 'goal', multi: true,
-    what: 'Nicer cars that pay more: +5% a level, and every new class of car pays x1.5.',
-    cost: function (l) { return 2000 * Math.pow(1.8, l); }, show: function () { return CLASS_NAMES[repTier()] + ', x' + fmtX(repMul()) + ' fee'; } },
+    what: 'Nicer cars that pay more: +5% a level, and every new class of car pays x1.3.',
+    cost: function (l) { return 2000 * Math.pow(2, l); }, show: function () { return CLASS_NAMES[repTier()] + ', x' + fmtX(repMul()) + ' fee'; } },
   ev: { tab: 'biz', name: 'EV chargers', tint: '#c9f2d9', icon: 'ev', multi: true,
     what: 'Chargers on 2 more bays. Cars at a charger pay +50%.',
     cost: function (l) { return 1500 * Math.pow(1.75, l); }, show: function () { return Math.min(S.lvl.ev, builtCols()) * 2 + ' charging bays'; } },
@@ -204,9 +204,9 @@ function perkHtml(k) {
 function frHtml() {
   var gain = starsGain(), nl = locAt(S.franchises + 1);
   var h = '<div class="fr"><h3>Franchise</h3>' +
-    '<p class="frlead">Sell this lot and start over in a new town. Your <b>income boost</b> stays forever and grows every time.</p>' +
+    '<p class="frlead">Earn enough on this lot, then sell it and start over in a new town. Your <b>income boost</b> stays forever and goes up a tier each time.</p>' +
     '<div class="frbig"><div><small>Income boost</small><b>x' + fmtX(frMult()) + '</b>' + (gain ? '<span>&rarr; x' + fmtX(frMult(S.stars + gain)) + '</span>' : '') + '</div>' +
-    '<div><small>Tokens</small><b>' + S.tok + '</b>' + (gain ? '<span>+' + gain + '</span>' : '') + '</div></div>' +
+    '<div><small>Tokens</small><b>' + S.tok + '</b>' + (gain ? '<span>+' + tokensFor(S.stars + 1) + '</span>' : '') + '</div></div>' +
     '<div class="frprog"><div class="meter" role="img" aria-label="Progress to the next boost"><i id="fr-bar" style="width:' + frPct() + '%"></i></div><p id="fr-note">' + frNote() + '</p></div>';
   if (!S.confirmFr) h += '<button class="buy" type="button" id="fr-go"' + (gain < 1 ? ' disabled' : '') + '>' + frBtn() + '</button>';
   else h += '<p class="frc">Sell and move to <b>' + nl.name + '</b>?</p><ul class="frlist"><li class="keep">Keep: income boost, tokens, gems, goals</li><li class="lose">Start over: money, buildings, upgrades, staff</li></ul>' +
@@ -216,13 +216,10 @@ function frHtml() {
   PORDER.forEach(function (k) { h += perkHtml(k); });
   return h;
 }
-function frNext() { return starAt(starsTotal() + 1); }
-function frPct() { var a = starAt(starsTotal()), b = frNext(); return Math.max(0, Math.min(100, (S.lifetime - a) / (b - a) * 100)); }
-function frNote() {
-  var g = starsGain();
-  return '$' + fmt(S.lifetime) + ' / $' + fmt(frNext()) + ' earned · ' + (g ? 'each step adds +35% boost and a token' : S.franchises ? 'reach it to franchise again' : 'reach it to unlock franchising');
-}
-function frBtn() { var g = starsGain(); return g < 1 ? 'Earn $' + fmt(frNext() - S.lifetime) + ' more' : 'Sell lot: boost x' + fmtX(frMult()) + ' → x' + fmtX(frMult(S.stars + g)); }
+function frNext() { return reqAt(S.stars); }
+function frPct() { return Math.max(0, Math.min(100, S.totalRun / frNext() * 100)); }
+function frNote() { return '$' + fmt(S.totalRun) + ' / $' + fmt(frNext()) + ' earned on this lot'; }
+function frBtn() { return starsGain() < 1 ? 'Earn $' + fmt(frNext() - S.totalRun) + ' more on this lot' : 'Sell lot: boost x' + fmtX(frMult()) + ' → x' + fmtX(frMult(S.stars + 1)); }
 function buildTray() {
   var h = '';
   if (S.tab === 'fr') h = frHtml();
@@ -275,7 +272,7 @@ function updateFr() {
 var lastGain = -1;
 function doFranchise() {
   var g = starsGain(); if (g < 1) return;
-  S.stars += g; S.tok += g; S.franchises++; S.gems += 5; S.money = 25 + headStart(); S.totalRun = 0;
+  S.stars += 1; S.tok += tokensFor(S.stars); S.franchises++;   // up one tier S.gems += 5; S.money = 25 + headStart(); S.totalRun = 0;
   Object.keys(S.lvl).forEach(function (k) { S.lvl[k] = 0; });
   applyBlueprints();
   S.theme = LOC().theme; buildTown();

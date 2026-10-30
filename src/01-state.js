@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.7';
+var VERSION = '1.2.0';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -117,16 +117,19 @@ function msCount(l) { return l < 10 ? 0 : l < 25 ? 1 : 1 + Math.floor(l / 25); }
 function msNext(l) { return l < 10 ? 10 : (Math.floor(l / 25) + 1) * 25; }
 function boostOn() { return S.boostEnd > Date.now(); }
 // the franchise bonus: +35% income for every franchise point you have ever earned
-function frMult(p) { return 1 + 0.35 * (p === undefined ? S.stars : p); }
+// the boost ladder: each franchise moves up one tier. S.stars is the tier you are on.
+var BOOSTS = [1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 40, 50, 75, 100, 150, 250, 500, 1000, 2500, 5000];
+function boostAt(t) { var b = BOOSTS, i; while (b.length <= t) { i = b.length; b.push(b[i - 1] * (i % 2 ? 2 : 2.5)); } return b[t]; }   // then x10, x25, x50...
+function frMult(p) { return boostAt(p === undefined ? S.stars : p); }
 function baseMult() { return frMult() * (1 + 0.25 * S.perk.gold) * (S.pass ? 2 : 1); }
 function mult() { return baseMult() * (boostOn() ? 2 : 1); }
 function rushFee() { return S.rush > 0 ? 1.5 : 1; }
-// reputation brings nicer cars: each class pays x1.5, and every level adds 5%
+// reputation brings nicer cars: each class pays x1.3, and every level adds 5%
 var REP_TIERS = [0, 5, 15, 30, 50, 80];
 var CLASS_NAMES = ['Small cars', 'Family cars', 'SUVs and trucks', 'Sports cars', 'Luxury cars', 'Supercars'];
 function repTier(l) { l = l === undefined ? S.lvl.rep : l; var t = 0; for (var i = 1; i < REP_TIERS.length; i++) if (l >= REP_TIERS[i]) t = i; return t; }
-function repMul(l) { l = l === undefined ? S.lvl.rep : l; return Math.pow(1.05, l) * Math.pow(1.5, repTier(l)); }
-function fee() { return 3 * Math.pow(FEEG, S.lvl.fee) * Math.pow(2, msCount(S.lvl.fee)) * repMul() * mod('fee', 1) * mult() * rushFee(); }
+function repMul(l) { l = l === undefined ? S.lvl.rep : l; return Math.pow(1.05, l) * Math.pow(1.3, repTier(l)); }
+function fee() { return 6 * Math.pow(FEEG, S.lvl.fee) * Math.pow(2, msCount(S.lvl.fee)) * repMul() * mod('fee', 1) * mult() * rushFee(); }
 // every visit: drive in, park, walk to the market, shop, walk back, drive out. Each step has an upgrade.
 function speedMul() { return 1 + 3 * (1 - Math.pow(0.94, S.lvl.gate)) + 0.5 * (1 - Math.pow(0.9, S.lvl.valet)); }
 function walkSpeed() { return 0.8 * (1 + 5 * (1 - Math.pow(0.93, S.lvl.walk))) * mod('walk', 1); }
@@ -136,7 +139,7 @@ function errandTime() { return 0.5 + (2.5 + Math.random() * 4) * Math.pow(0.93, 
 function tipRate() { return 0.05 * S.lvl.shop * Math.pow(1.3, msCount(S.lvl.shop)); }
 // drivers per second who want to park: advertising, a bigger road and the location bring more
 function roadTraffic() { return 1 + 0.35 * roadTier() + 0.01 * S.lvl.gate; }
-function demand() { return Math.min(18, 0.42 * Math.pow(1.06, S.lvl.ads) * Math.pow(1.5, msCount(S.lvl.ads)) * roadTraffic() * mod('demand', 1)) * (S.rush > 0 ? 2.5 : 1); }
+function demand() { return Math.min(18, 0.7 * Math.pow(1.06, S.lvl.ads) * Math.pow(1.5, msCount(S.lvl.ads)) * roadTraffic() * mod('demand', 1)) * (S.rush > 0 ? 2.5 : 1); }
 function gapBase() { return 1 / demand(); }
 // the garage can only go so high until you franchise: a nudge to start over, not a wall
 function maxDecks() { return 4 + 2 * S.franchises; }
@@ -144,15 +147,15 @@ function garCap() { return S.lvl.garage * PERDECK; }
 // car wash: some leaving drivers pull in for a wash that pays a share of the fee; more lanes at levels 10, 25 and 50
 function washLanes() { var l = S.lvl.wash; return !l ? 0 : l < 10 ? 1 : l < 25 ? 2 : l < 50 ? 3 : 4; }
 function washChance() { return S.lvl.wash ? Math.min(0.7, 0.2 + 0.02 * (S.lvl.wash - 1)) : 0; }
-function washPrice() { return fee() * 0.6 * Math.pow(1.08, Math.max(0, S.lvl.wash - 1)) * Math.pow(2, msCount(S.lvl.wash)); }
+function washPrice() { return fee() * 0.6 * Math.pow(1.06, Math.max(0, S.lvl.wash - 1)) * Math.pow(2, msCount(S.lvl.wash)); }
 // EV chargers go in column by column, from the gate end of the first row; a car at a charger pays half again
 var EV_BONUS = 0.5;
 function evBay(s) { return s.n < S.lvl.ev; }
 /* ---------- hustle: steady taps fill the meter, which multiplies all income; it drains when you stop ---------- */
 function hustleCap() { return 3 + S.perk.hustle; }
 function hustleMul() { return 1 + (hustleCap() - 1) * S.hype; }
-function tapPower() { return 0.05 * (1 + 0.2 * S.perk.tap); }
-function drainRate() { return 0.06 * Math.pow(0.9, S.lvl.crew) * mod('hustle', 1); }
+function tapPower() { return 0.06 * (1 + 0.2 * S.perk.tap); }
+function drainRate() { return 0.03 * Math.pow(0.9, S.lvl.crew) * mod('hustle', 1); }   // about one tap a second keeps the meter climbing
 function flow() { return 1 + 0.6 * S.hype; }                   // the lot also moves a little faster
 /* ---------- staff ---------- */
 function vipMul() { return (1 + 0.25 * S.lvl.concierge) * (1 + 0.3 * S.perk.lucky); }
@@ -198,10 +201,13 @@ function econRate() {
 }
 function econBase() { return econRate() / (boostOn() ? 2 : 1); }
 // franchise points come from everything you have ever earned; franchising pays out the points earned since last time
-var STAR_BASE = 1e5;   // the first boost at $100K earned, then $3.2M, $24M, $100M... (5th powers)
-function starsTotal() { return Math.floor(Math.pow(S.lifetime / STAR_BASE, 0.2)); }
-function starsGain() { return Math.max(0, starsTotal() - S.stars); }
-function starAt(n) { return Math.pow(n, 5) * STAR_BASE; }
+// what you must earn on the current lot to franchise from tier t to t+1.
+// Measured: about what a lot at that tier earns in 10 minutes with light tapping, rounded (scripts/sim.js checks the pace).
+var REQS = [1e5, 30e6, 250e6, 750e6, 4e9, 10e9, 20e9, 50e9, 450e9, 600e9, 900e9, 1.5e12, 4.5e12, 40e12, 250e12, 400e12, 1.5e15, 6e15, 60e15, 250e15, 6e18, 15e18, 120e18];
+function reqAt(t) { while (REQS.length <= t) REQS.push(REQS[REQS.length - 1] * 8); return REQS[t]; }
+// tokens for reaching tier t: one, plus one more every third tier
+function tokensFor(t) { return 1 + Math.floor(t / 3); }
+function starsGain() { return S.totalRun >= reqAt(S.stars) ? 1 : 0; }
 function headStart() { return S.perk.head ? 200 * Math.pow(3, S.perk.head - 1) : 0; }
 
 /* ---------- save and load ---------- */
