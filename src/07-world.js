@@ -37,6 +37,9 @@ function buildTown() {
     if (rnd() < .25) continue;
     out.push({ t: S.theme === 'neon' ? 'neon' : 'tower', x: x + rnd() * .6, y: y + rnd() * .6, w: 1.5 + rnd(), d: 1.4 + rnd() * .8, h: 70 + rnd() * 110 * (S.theme === 'city' ? 1.5 : 1), c: TOW[Math.floor(rnd() * TOW.length)], n: NEON[Math.floor(rnd() * 4)], sky: true });
   }
+  // never build inside the space the lot, market, garage and car wash can grow into (the mega mall tower reaches y -2.9)
+  var KEEP = [[GX0 - .6, -3.4, WRX + .9, RY]];
+  out = out.filter(function (p) { var w = p.w || 1, d = p.d || 1; return !KEEP.some(function (k) { return p.x < k[2] && p.x + w > k[0] && p.y < k[3] && p.y + d > k[1]; }); });
   // nearest plots appear first
   out.forEach(function (p) { p.dist = Math.hypot(p.x - 4, (p.y - 4) * 1.3) + (p.sky ? 6 : 0); });
   out.sort(function (a, b) { return a.dist - b.dist; });
