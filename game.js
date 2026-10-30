@@ -26,7 +26,8 @@ var S = {
 };
 var GS = [];   // garage slots: { car, color }
 // level ceilings. Parking fee and shop deals never run out; the speed lines are long but finite
-var MAXL = { space: 2, garage: 99, fee: Infinity, ads: 50, gate: 15, sign: 3, walk: 15, express: 20, valet: 8, shop: Infinity };
+// Only the main lot's bays (the lot is only so wide) and the three guidance steps have a ceiling; everything else goes on forever
+var MAXL = { space: 2, garage: Infinity, fee: Infinity, ads: Infinity, gate: Infinity, sign: 3, walk: Infinity, express: Infinity, valet: Infinity, shop: Infinity };
 
 /* ---------- numbers ---------- */
 var SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
@@ -58,16 +59,19 @@ function mult() { return (1 + 0.35 * S.stars) * Math.pow(1.15, S.perk.gold) * Ma
 function rushFee() { return S.rush > 0 ? 1.5 : 1; }
 function fee() { return 3 * Math.pow(FEEG, S.lvl.fee) * Math.pow(2, msCount(S.lvl.fee)) * (S.lvl.sign >= 3 ? 1.2 : 1) * mult() * rushFee(); }
 // every visit: park, step out, walk to the shops, shop, walk back with a bag, step in, drive off
-function speedMul() { return 1 + 0.12 * S.lvl.gate + 0.06 * S.lvl.sign + 0.08 * S.lvl.valet; }
-function walkSpeed() { return 0.8 * (1 + 0.2 * S.lvl.walk); }
+// speed lines have diminishing returns: each level helps, none ever stops helping
+function speedMul() { return 1 + 4 * (1 - Math.pow(0.93, S.lvl.gate)) + 0.06 * S.lvl.sign + 0.5 * (1 - Math.pow(0.9, S.lvl.valet)); }
+function walkSpeed() { return 0.8 * (1 + 5 * (1 - Math.pow(0.93, S.lvl.walk))); }
 function doorTime() { return 0.8 / (1 + 0.5 * S.lvl.valet); }
-function errandTime() { return (3 + Math.random() * 4) / (1 + 0.06 * S.lvl.express); }
+// shop visits shrink towards half a second: curbside pickup
+function visitAvg() { return 0.5 + 4.5 * Math.pow(0.93, S.lvl.express); }
+function errandTime() { return 0.5 + (2.5 + Math.random() * 4) * Math.pow(0.93, S.lvl.express); }
 function tipRate() { return 0.05 * S.lvl.shop * Math.pow(1.3, msCount(S.lvl.shop)); }
-function demand() { return Math.min(6, 0.42 * Math.pow(1.06, S.lvl.ads) * Math.pow(1.5, msCount(S.lvl.ads))) * (S.rush > 0 ? 2.5 : 1); }
+function demand() { return Math.min(14, 0.42 * Math.pow(1.06, S.lvl.ads) * Math.pow(1.5, msCount(S.lvl.ads))) * (S.rush > 0 ? 2.5 : 1); }
 function gapBase() { return 1 / demand(); }
-function dwellAvg() { return 2 * doorTime() + 4.8 / walkSpeed() + 5 / (1 + 0.06 * S.lvl.express); }
+function dwellAvg() { return 2 * doorTime() + 4.8 / walkSpeed() + visitAvg(); }
 function dwellGarage() { return dwellAvg() + 21 / walkSpeed(); }   // the garage is a longer walk from the market
-function maxDecks() { return 2 + 2 * S.franchises; }
+function maxDecks() { return Infinity; }
 function garCap() { return S.lvl.garage * PERDECK; }
 function ensureSpots() {
   if (S.spots.length) return;
@@ -447,11 +451,19 @@ function walkerInLane(x0, x1) {
   }
   return false;
 }
+var lastBackup = -99;
 var HIDDEN = { parked: 1, wantout: 1, ghide: 1, gwait: 1 };
 // drivers fill the main lot first and spill into the garage when it is busy (some like the covered bays anyway)
 function spawn(vip) {
   var free = S.spots.filter(function (s) { return unlocked(s) && !s.car; }), gf = vip ? 0 : garFree();
-  if (!free.length && !gf) return false;
+  var queued = S.cars.filter(function (c) { return c.state === 'wait'; }).length;
+  if ((!free.length && !gf) || queued) {   // everything is full: the driver joins the queue on the street
+    if (vip || queued >= 5 || S.cars.some(function (c) { return !HIDDEN[c.state] && c.x < SPAWNX + 2.3 && Math.abs(c.y - 2.5) < .6; })) return false;
+    var q = { id: ++S.id, fl: 0, vip: false, spot: null, hx: 0, hy: 0, color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], x: SPAWNX, y: 2.5, heading: 0, state: 'wait', path: [{ x: -3.9, y: 2.5 }], timer: 28, phase: 0, moving: false };
+    S.cars.push(q);
+    if (S.t - lastBackup > 45) { lastBackup = S.t; note('Lot full! Cars are backing up. Build more space, or speed up shop visits.'); }
+    return true;
+  }
   var busy = S.cars.some(function (c) { return !HIDDEN[c.state] && c.x < SPAWNX + 2.3 && Math.abs(c.y - 2.5) < .6; });
   if (busy) { S.spawnT = Math.min(S.spawnT, 0.3); return false; }
   var toG = false;
@@ -520,6 +532,25 @@ function stepCar(c, dt) {
     if (roadClearFor(c)) { c.state = 'out'; c.path = [{ x: c.x, y: 2.5, rev: true }, { x: 14.5, y: 2.5 }]; }
     return;
   }
+  if (c.state === 'wait') {
+    var front = true, i;
+    for (i = 0; i < S.cars.length; i++) if (S.cars[i].state === 'wait' && S.cars[i].x > c.x) front = false;
+    var fs = front ? S.spots.filter(function (s) { return unlocked(s) && !s.car; }) : [];
+    if (fs.length) {   // a bay opened up: take the one nearest the gate
+      var sp = fs[Math.floor(Math.random() * fs.length)];
+      sp.car = c; c.spot = sp; c.state = 'in'; c.path = [{ x: sp.x + .5, y: 2.5 }, { x: sp.x + .5, y: sp.y + .5 }]; c.timer = 0;
+    } else if (c.x < GIN - .7 && garFree() > 0) {   // or a garage bay, if they have not passed the garage yet
+      var open = [];
+      for (i = 0; i < garCap(); i++) if (!GS[i].car) open.push(i);
+      var gi = open[Math.floor(Math.random() * open.length)];
+      c.g = true; c.gi = gi; c.door = 2 + Math.floor(Math.random() * COLS()); GS[gi].car = c; GS[gi].color = c.color;
+      c.state = 'gin'; c.path = [{ x: GIN, y: 2.5 }, { x: GIN, y: GY1 }];
+    } else if (!c.moving) {
+      c.timer -= dt;
+      if (c.timer <= 0) { c.state = 'leave'; c.path = [{ x: 14.5, y: 2.5 }]; S.lost = (S.lost || 0) + 1; S.particles.push({ x: c.x, y: 2.5, fl: 0, t: 0, txt: 'Full!' }); }
+    }
+    if (c.state === 'wait' && !c.path[0]) { c.moving = false; return; }
+  }
   var tg = c.path[0];
   if (!tg) {
     if (c.state === 'in') { c.state = 'parked'; c.phase = 0; c.timer = doorTime(); }
@@ -567,7 +598,7 @@ function update(dt) {
   S.walkers.forEach(function (w) { stepWalker(w, dt); });
   S.walkers = S.walkers.filter(function (w) { return !w.done; });
   S.cars.forEach(function (c) { stepCar(c, dt); });
-  S.cars = S.cars.filter(function (c) { return !((c.state === 'out' || c.state === 'gout') && c.x >= 14.4); });
+  S.cars = S.cars.filter(function (c) { return !((c.state === 'out' || c.state === 'gout' || c.state === 'leave') && c.x >= 14.4); });
   var open = S.cars.some(function (c) { return (c.state === 'in' || c.state === 'gout') && c.heading === 0 && c.x > -4.7 && c.x < -2.4; });
   S.gate += ((open ? 1 : 0) - S.gate) * Math.min(1, dt * 7);
   S.particles.forEach(function (p) { p.t += dt; });
@@ -858,22 +889,22 @@ var ITEMS = {
     lvl: function () { return S.lvl.garage; }, max: function () { return maxDecks(); },
     cost: function (l) { return 400 * Math.pow(3.4, l); },
     now: function () { var n = S.lvl.garage; return n ? n + (n === 1 ? ' floor, ' : ' floors, ') + garCap() + ' garage spaces' : 'No garage yet'; },
-    next: function () { var n = S.lvl.garage; return n >= maxDecks() ? 'Franchise to build higher' : n ? 'Floor ' + (n + 1) + ': ' + PERDECK + ' more spaces' : 'A garage beside the market, ' + PERDECK + ' spaces a floor'; },
+    next: function () { var n = S.lvl.garage; return n ? 'Floor ' + (n + 1) + ': ' + PERDECK + ' more spaces' : 'A garage beside the market, ' + PERDECK + ' spaces a floor'; },
     apply: function () { S.lvl.garage++; ensureSlots(); } },
   gate: { tab: 'speed', name: 'Wider lanes', tint: '#ffc7bd', icon: 'gate', multi: true,
     lvl: function () { return S.lvl.gate; }, max: function () { return MAXL.gate; },
     cost: function (l) { return 40 * Math.pow(1.7, l); },
-    now: function () { return 'Cars drive at ' + Math.round(speedMul() * 100) + '%'; }, next: function () { return 'Cars drive 12% faster'; },
+    now: function () { return 'Cars drive at ' + Math.round(speedMul() * 100) + '%'; }, next: function () { return 'Cars drive faster, with diminishing returns'; },
     apply: function () { S.lvl.gate++; } },
   walk: { tab: 'speed', name: 'Sidewalks', tint: '#d6f0c8', icon: 'walk', multi: true,
     lvl: function () { return S.lvl.walk; }, max: function () { return MAXL.walk; },
     cost: function (l) { return 25 * Math.pow(1.65, l); },
-    now: function () { return 'Shoppers walk at ' + Math.round(walkSpeed() / 0.8 * 100) + '%'; }, next: function () { return 'Walking 20% faster (garage shoppers walk further)'; },
+    now: function () { return 'Shoppers walk at ' + Math.round(walkSpeed() / 0.8 * 100) + '%'; }, next: function () { return 'Faster walking (garage shoppers walk further)'; },
     apply: function () { S.lvl.walk++; } },
   express: { tab: 'speed', name: 'Express shopping', tint: '#ffe6b8', icon: 'express', multi: true,
     lvl: function () { return S.lvl.express; }, max: function () { return MAXL.express; },
     cost: function (l) { return 45 * Math.pow(1.6, l); },
-    now: function () { return 'Visits last about ' + (5 / (1 + 0.06 * S.lvl.express)).toFixed(1) + 's'; }, next: function () { return 'Shorter shop visits'; },
+    now: function () { return (S.lvl.express >= 30 ? 'Curbside pickup: ' : 'Visits last about ') + visitAvg().toFixed(1) + 's'; }, next: function () { return 'Shorter shop visits, down towards half a second'; },
     apply: function () { S.lvl.express++; } },
   valet: { tab: 'speed', name: 'Valet', tint: '#d9e4ff', icon: 'valet', multi: true,
     lvl: function () { return S.lvl.valet; }, max: function () { return MAXL.valet; },
@@ -905,7 +936,7 @@ var ITEMS = {
 };
 var TABS = { build: ['space', 'garage', 'sign'], speed: ['gate', 'walk', 'express', 'valet'], biz: ['fee', 'ads', 'shop'] };
 var TABNOTE = {
-  build: 'More room for cars. Drivers use the main lot first, then the garage when it fills up.',
+  build: 'More room for cars. Drivers use the main lot first, then the garage. When both are full, cars queue on the street and lose patience, so keep building.',
   speed: 'Every visit: park, step out, walk to the shops, shop, walk back, leave. Speed up any step to free the bay sooner.',
   biz: 'Earn more from each visit and bring more cars in. Fees and shop deals never run out.',
   goals: 'Finish goals for +2% income each, forever, plus a cash bonus. Every goal has another one after it.',
@@ -935,14 +966,14 @@ function note(t) {
 
 function btnHtml(k) {
   var p = plan(k, S.qty);
-  if (p.maxed) return k === 'garage' ? 'Franchise for more' : 'Maxed';
+  if (p.maxed) return 'Maxed';
   return '<span class="c">$</span>' + fmt(p.cost) + (p.n > 1 ? ' <small>x' + p.n + '</small>' : '');
 }
 function cardHtml(k) {
   var it = ITEMS[k], l = it.lvl(), mx = it.max(), pips = '';
   if (mx <= 12) { for (var i = 0; i < mx; i++) pips += '<span class="pip' + (i < l ? ' on' : '') + '"></span>'; }
   else pips = '<span class="lbl2">Level ' + l + '</span>';
-  var maxed = l >= mx, sub = maxed && k !== 'garage' ? 'Fully upgraded' : it.next();
+  var maxed = l >= mx, sub = maxed ? 'Fully upgraded' : it.next();
   if (it.ms) sub += ' · ' + msNote(l);
   return '<article class="card" id="card-' + k + '"><h3><span class="ico" style="background:' + it.tint + '">' + ICON[it.icon] + '</span>' + it.name + '</h3>' +
     '<p class="now">' + it.now() + '</p><div class="pips" aria-hidden="true">' + pips + '</div>' +
@@ -967,7 +998,7 @@ function frHtml() {
   var base = Math.pow(starsTotal(), 3) * STAR_BASE, nxt = Math.pow(starsTotal() + 1, 3) * STAR_BASE;
   var pct = Math.max(0, Math.min(100, (S.lifetime - base) / (nxt - base) * 100));
   var h = '<div class="fr"><h3><span style="color:#f0a300;-webkit-text-stroke:1.5px var(--ink)">&#9733;</span> Franchise</h3>' +
-    '<p>Sell this lot and open a new one from scratch. Each star adds 35% to all income forever, you get a token per star to spend on perks, and every franchise lets you build 2 more garage floors.</p>' +
+    '<p>Sell this lot and open a new one from scratch. Each star adds 35% to all income forever, you get a token per star to spend on perks, and every franchise starts you off richer.</p>' +
     '<div class="row"><div class="stat"><small>Stars</small>' + S.stars + '</div>' +
     '<div class="stat"><small>Income bonus</small>+' + Math.round((mult() - 1) * 100) + '%</div>' +
     '<div class="stat"><small>Earned this lot</small>$<span id="fr-run">' + fmt(S.totalRun) + '</span></div>' +

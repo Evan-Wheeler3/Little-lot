@@ -73,11 +73,19 @@ function walkerInLane(x0, x1) {
   }
   return false;
 }
+var lastBackup = -99;
 var HIDDEN = { parked: 1, wantout: 1, ghide: 1, gwait: 1 };
 // drivers fill the main lot first and spill into the garage when it is busy (some like the covered bays anyway)
 function spawn(vip) {
   var free = S.spots.filter(function (s) { return unlocked(s) && !s.car; }), gf = vip ? 0 : garFree();
-  if (!free.length && !gf) return false;
+  var queued = S.cars.filter(function (c) { return c.state === 'wait'; }).length;
+  if ((!free.length && !gf) || queued) {   // everything is full: the driver joins the queue on the street
+    if (vip || queued >= 5 || S.cars.some(function (c) { return !HIDDEN[c.state] && c.x < SPAWNX + 2.3 && Math.abs(c.y - 2.5) < .6; })) return false;
+    var q = { id: ++S.id, fl: 0, vip: false, spot: null, hx: 0, hy: 0, color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], x: SPAWNX, y: 2.5, heading: 0, state: 'wait', path: [{ x: -3.9, y: 2.5 }], timer: 28, phase: 0, moving: false };
+    S.cars.push(q);
+    if (S.t - lastBackup > 45) { lastBackup = S.t; note('Lot full! Cars are backing up. Build more space, or speed up shop visits.'); }
+    return true;
+  }
   var busy = S.cars.some(function (c) { return !HIDDEN[c.state] && c.x < SPAWNX + 2.3 && Math.abs(c.y - 2.5) < .6; });
   if (busy) { S.spawnT = Math.min(S.spawnT, 0.3); return false; }
   var toG = false;
@@ -146,6 +154,25 @@ function stepCar(c, dt) {
     if (roadClearFor(c)) { c.state = 'out'; c.path = [{ x: c.x, y: 2.5, rev: true }, { x: 14.5, y: 2.5 }]; }
     return;
   }
+  if (c.state === 'wait') {
+    var front = true, i;
+    for (i = 0; i < S.cars.length; i++) if (S.cars[i].state === 'wait' && S.cars[i].x > c.x) front = false;
+    var fs = front ? S.spots.filter(function (s) { return unlocked(s) && !s.car; }) : [];
+    if (fs.length) {   // a bay opened up: take the one nearest the gate
+      var sp = fs[Math.floor(Math.random() * fs.length)];
+      sp.car = c; c.spot = sp; c.state = 'in'; c.path = [{ x: sp.x + .5, y: 2.5 }, { x: sp.x + .5, y: sp.y + .5 }]; c.timer = 0;
+    } else if (c.x < GIN - .7 && garFree() > 0) {   // or a garage bay, if they have not passed the garage yet
+      var open = [];
+      for (i = 0; i < garCap(); i++) if (!GS[i].car) open.push(i);
+      var gi = open[Math.floor(Math.random() * open.length)];
+      c.g = true; c.gi = gi; c.door = 2 + Math.floor(Math.random() * COLS()); GS[gi].car = c; GS[gi].color = c.color;
+      c.state = 'gin'; c.path = [{ x: GIN, y: 2.5 }, { x: GIN, y: GY1 }];
+    } else if (!c.moving) {
+      c.timer -= dt;
+      if (c.timer <= 0) { c.state = 'leave'; c.path = [{ x: 14.5, y: 2.5 }]; S.lost = (S.lost || 0) + 1; S.particles.push({ x: c.x, y: 2.5, fl: 0, t: 0, txt: 'Full!' }); }
+    }
+    if (c.state === 'wait' && !c.path[0]) { c.moving = false; return; }
+  }
   var tg = c.path[0];
   if (!tg) {
     if (c.state === 'in') { c.state = 'parked'; c.phase = 0; c.timer = doorTime(); }
@@ -193,7 +220,7 @@ function update(dt) {
   S.walkers.forEach(function (w) { stepWalker(w, dt); });
   S.walkers = S.walkers.filter(function (w) { return !w.done; });
   S.cars.forEach(function (c) { stepCar(c, dt); });
-  S.cars = S.cars.filter(function (c) { return !((c.state === 'out' || c.state === 'gout') && c.x >= 14.4); });
+  S.cars = S.cars.filter(function (c) { return !((c.state === 'out' || c.state === 'gout' || c.state === 'leave') && c.x >= 14.4); });
   var open = S.cars.some(function (c) { return (c.state === 'in' || c.state === 'gout') && c.heading === 0 && c.x > -4.7 && c.x < -2.4; });
   S.gate += ((open ? 1 : 0) - S.gate) * Math.min(1, dt * 7);
   S.particles.forEach(function (p) { p.t += dt; });

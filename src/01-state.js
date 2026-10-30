@@ -26,7 +26,8 @@ var S = {
 };
 var GS = [];   // garage slots: { car, color }
 // level ceilings. Parking fee and shop deals never run out; the speed lines are long but finite
-var MAXL = { space: 2, garage: 99, fee: Infinity, ads: 50, gate: 15, sign: 3, walk: 15, express: 20, valet: 8, shop: Infinity };
+// Only the main lot's bays (the lot is only so wide) and the three guidance steps have a ceiling; everything else goes on forever
+var MAXL = { space: 2, garage: Infinity, fee: Infinity, ads: Infinity, gate: Infinity, sign: 3, walk: Infinity, express: Infinity, valet: Infinity, shop: Infinity };
 
 /* ---------- numbers ---------- */
 var SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
@@ -58,16 +59,19 @@ function mult() { return (1 + 0.35 * S.stars) * Math.pow(1.15, S.perk.gold) * Ma
 function rushFee() { return S.rush > 0 ? 1.5 : 1; }
 function fee() { return 3 * Math.pow(FEEG, S.lvl.fee) * Math.pow(2, msCount(S.lvl.fee)) * (S.lvl.sign >= 3 ? 1.2 : 1) * mult() * rushFee(); }
 // every visit: park, step out, walk to the shops, shop, walk back with a bag, step in, drive off
-function speedMul() { return 1 + 0.12 * S.lvl.gate + 0.06 * S.lvl.sign + 0.08 * S.lvl.valet; }
-function walkSpeed() { return 0.8 * (1 + 0.2 * S.lvl.walk); }
+// speed lines have diminishing returns: each level helps, none ever stops helping
+function speedMul() { return 1 + 4 * (1 - Math.pow(0.93, S.lvl.gate)) + 0.06 * S.lvl.sign + 0.5 * (1 - Math.pow(0.9, S.lvl.valet)); }
+function walkSpeed() { return 0.8 * (1 + 5 * (1 - Math.pow(0.93, S.lvl.walk))); }
 function doorTime() { return 0.8 / (1 + 0.5 * S.lvl.valet); }
-function errandTime() { return (3 + Math.random() * 4) / (1 + 0.06 * S.lvl.express); }
+// shop visits shrink towards half a second: curbside pickup
+function visitAvg() { return 0.5 + 4.5 * Math.pow(0.93, S.lvl.express); }
+function errandTime() { return 0.5 + (2.5 + Math.random() * 4) * Math.pow(0.93, S.lvl.express); }
 function tipRate() { return 0.05 * S.lvl.shop * Math.pow(1.3, msCount(S.lvl.shop)); }
-function demand() { return Math.min(6, 0.42 * Math.pow(1.06, S.lvl.ads) * Math.pow(1.5, msCount(S.lvl.ads))) * (S.rush > 0 ? 2.5 : 1); }
+function demand() { return Math.min(14, 0.42 * Math.pow(1.06, S.lvl.ads) * Math.pow(1.5, msCount(S.lvl.ads))) * (S.rush > 0 ? 2.5 : 1); }
 function gapBase() { return 1 / demand(); }
-function dwellAvg() { return 2 * doorTime() + 4.8 / walkSpeed() + 5 / (1 + 0.06 * S.lvl.express); }
+function dwellAvg() { return 2 * doorTime() + 4.8 / walkSpeed() + visitAvg(); }
 function dwellGarage() { return dwellAvg() + 21 / walkSpeed(); }   // the garage is a longer walk from the market
-function maxDecks() { return 2 + 2 * S.franchises; }
+function maxDecks() { return Infinity; }
 function garCap() { return S.lvl.garage * PERDECK; }
 function ensureSpots() {
   if (S.spots.length) return;
