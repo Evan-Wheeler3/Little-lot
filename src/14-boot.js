@@ -35,7 +35,7 @@ function hud() {
     hypeEl.classList.toggle('on', S.hype > .02);
     hypeTxt.textContent = S.hlock > 0 ? 'Hustle x' + hustleCap() + ' locked · ' + Math.ceil(S.hlock) + 's' : S.hype > .02 ? 'Hustle x' + hustleMul().toFixed(1) + ' income · max x' + hustleCap() : 'Tap the lot to hustle · up to x' + hustleCap() + ' income';
   }
-  recenterBtn.hidden = !S.view.user;
+  recenterBtn.hidden = !S.view.user || sheet.classList.contains('open') || !panelEl.hidden;
   dailyDot.hidden = !dailyReady();
   shopDot.hidden = S.gems < 30;
   if (S.tab === 'fr' && S.t - lastFr > 0.5) { lastFr = S.t; updateFr(); }
