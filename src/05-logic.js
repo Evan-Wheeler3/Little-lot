@@ -77,7 +77,7 @@ function spawn(vip) {
     if (vip || queued >= 5 || entranceBusy()) return false;
     var pc = pickCar(), q = newCar(pc.type, pc.color, SPAWNX, LANE0, 0, 'wait');
     q.path = [{ x: GIN - 1.3, y: LANE0, stop: true }]; q.timer = 30; S.cars.push(q);
-    if (S.t - lastBackup > 45 && S.tut >= TUT.length) { lastBackup = S.t; note('Lot full! Cars are queuing. Build more bays, or speed up shop visits.'); }
+    if (S.t - lastBackup > 45 && S.tut >= TUT.length) { lastBackup = S.t; note('Lot full · build more bays'); }
     return true;
   }
   if (entranceBusy()) { S.spawnT = Math.min(S.spawnT, 0.3); return false; }
@@ -345,7 +345,7 @@ function update(dt) {
     stepCar(c, fdt);
     if (c.vip && !HIDDEN[c.state]) {
       c.vt = (c.vt || 0) + dt;
-      if (c.vt > 1 && !S.tutVip && S.tut >= TUT.length) { S.tutVip = true; tip('Tap the golden car for a big bonus!', 6); }
+      if (c.vt > 1 && !S.tutVip && S.tut >= TUT.length) { S.tutVip = true; tip('Tap golden cars for a bonus!', 5); }
       if (S.lvl.concierge && c.vt > 2.5) collectVip(c);
     }
   });

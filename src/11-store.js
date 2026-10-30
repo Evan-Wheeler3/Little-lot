@@ -39,13 +39,13 @@ function iapInit() {
   store.initialize([A]).then(function () { iapReady = true; if (typeof refreshPanels === 'function') refreshPanels(); });
 }
 function iapBuy(k) {
-  if (!store || !iapReady) { note('Purchases are available in the Little Lot app on the App Store.'); return; }
+  if (!store || !iapReady) { note('Purchases are in the App Store app'); return; }
   var p = store.get(IAP[k].id), o = p && p.getOffer();
-  if (!o) { note('That item is not available right now. Try again later.'); return; }
-  store.order(o).then(function (err) { if (err && err.code !== window.CdvPurchase.ErrorCode.PAYMENT_CANCELLED) note('The purchase did not go through. You were not charged.'); });
+  if (!o) { note('Not available right now'); return; }
+  store.order(o).then(function (err) { if (err && err.code !== window.CdvPurchase.ErrorCode.PAYMENT_CANCELLED) note('Purchase failed · not charged'); });
 }
 function iapRestore() {
-  if (!store) { note('Restore works in the Little Lot app on the App Store.'); return; }
+  if (!store) { note('Restore works in the App Store app'); return; }
   note('Restoring purchases...');
   store.restorePurchases().then(function () { note(S.pass || S.starter ? 'Purchases restored.' : 'No purchases to restore on this Apple ID.'); });
 }

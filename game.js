@@ -5,7 +5,7 @@ var HW = 40, HH = 20, OX = 300, OY = 110;
 var INK = '#3b2f5c';
 var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var ZOFF = 0;
-var VERSION = '1.1.4';
+var VERSION = '1.1.5';
 
 /* ---------- the layout (x runs east along the road, y runs south towards the camera) ----------
    Main road along x, north edge at RY; customers drive the lane nearest the lot (LANE0) and the road widens to the south.
@@ -989,7 +989,7 @@ function spawn(vip) {
     if (vip || queued >= 5 || entranceBusy()) return false;
     var pc = pickCar(), q = newCar(pc.type, pc.color, SPAWNX, LANE0, 0, 'wait');
     q.path = [{ x: GIN - 1.3, y: LANE0, stop: true }]; q.timer = 30; S.cars.push(q);
-    if (S.t - lastBackup > 45 && S.tut >= TUT.length) { lastBackup = S.t; note('Lot full! Cars are queuing. Build more bays, or speed up shop visits.'); }
+    if (S.t - lastBackup > 45 && S.tut >= TUT.length) { lastBackup = S.t; note('Lot full · build more bays'); }
     return true;
   }
   if (entranceBusy()) { S.spawnT = Math.min(S.spawnT, 0.3); return false; }
@@ -1257,7 +1257,7 @@ function update(dt) {
     stepCar(c, fdt);
     if (c.vip && !HIDDEN[c.state]) {
       c.vt = (c.vt || 0) + dt;
-      if (c.vt > 1 && !S.tutVip && S.tut >= TUT.length) { S.tutVip = true; tip('Tap the golden car for a big bonus!', 6); }
+      if (c.vt > 1 && !S.tutVip && S.tut >= TUT.length) { S.tutVip = true; tip('Tap golden cars for a bonus!', 5); }
       if (S.lvl.concierge && c.vt > 2.5) collectVip(c);
     }
   });
@@ -1300,7 +1300,7 @@ function goalCash() { return Math.max(econRate() * 60, fee() * 10); }
 function claimGoal(k) {
   if (!goalReady(k)) return false;
   var cash = goalCash(); S.goal[k]++; giveMoney(cash); S.gems += GOAL_GEMS;
-  note('Goal complete! +$' + fmt(cash) + ' and ' + GOAL_GEMS + ' gems');
+  note('Goal done · +$' + fmt(cash) + ' · +' + GOAL_GEMS + ' gems');
   sfx('claim'); buzz('medium');
   return true;
 }
@@ -2025,13 +2025,13 @@ function iapInit() {
   store.initialize([A]).then(function () { iapReady = true; if (typeof refreshPanels === 'function') refreshPanels(); });
 }
 function iapBuy(k) {
-  if (!store || !iapReady) { note('Purchases are available in the Little Lot app on the App Store.'); return; }
+  if (!store || !iapReady) { note('Purchases are in the App Store app'); return; }
   var p = store.get(IAP[k].id), o = p && p.getOffer();
-  if (!o) { note('That item is not available right now. Try again later.'); return; }
-  store.order(o).then(function (err) { if (err && err.code !== window.CdvPurchase.ErrorCode.PAYMENT_CANCELLED) note('The purchase did not go through. You were not charged.'); });
+  if (!o) { note('Not available right now'); return; }
+  store.order(o).then(function (err) { if (err && err.code !== window.CdvPurchase.ErrorCode.PAYMENT_CANCELLED) note('Purchase failed · not charged'); });
 }
 function iapRestore() {
-  if (!store) { note('Restore works in the Little Lot app on the App Store.'); return; }
+  if (!store) { note('Restore works in the App Store app'); return; }
   note('Restoring purchases...');
   store.restorePurchases().then(function () { note(S.pass || S.starter ? 'Purchases restored.' : 'No purchases to restore on this Apple ID.'); });
 }
@@ -2163,8 +2163,8 @@ var BIG = {
   valet: function () { return [doorTime().toFixed(2) + 's', 'per car door']; },
   fee: function () { return ['$' + fmtSmall(fee() / rushFee()), 'per car']; },
   ads: function () { return [Math.round(demand() / (S.rush > 0 ? 2.5 : 1) * 60), 'drivers a minute']; },
-  rep: function () { return ['x' + fmtX(repMul()), CLASS_NAMES[repTier()].toLowerCase()]; },
-  ev: function () { return [Math.min(S.lvl.ev, builtCols()) * 2, 'charging bays']; },
+  rep: function () { return ['+' + Math.round((repMul() - 1) * 100) + '%', 'fares from nicer cars'] ; },
+  ev: function () { return [Math.min(S.lvl.ev, builtCols()) * 2, 'bays paying +50% fares']; },
   concierge: function () { return S.lvl.concierge ? ['x' + fmtX(vipMul()), 'golden car bonus'] : ['Off', 'greets golden cars']; },
   promoter: function () { return S.lvl.promoter ? [rushLen() + 's', 'auto rush hours'] : ['Off', 'starts rush hours']; },
   crew: function () { return [Math.round(1 / drainRate()) + 's', 'full meter lasts']; },
@@ -2261,7 +2261,7 @@ function buildTray() {
   if (S.tab === 'fr') h = frHtml();
   else if (S.tab === 'goals') { h += '<p class="tabnote">' + TABNOTE.goals + '</p>'; GORDER.forEach(function (k) { h += goalHtml(k); }); }
   else {
-    if (S.tut === 3) h += '<p class="tutnote">Tap a yellow button to buy. Every upgrade makes the lot earn more.</p>';
+    if (S.tut === 3) h += '<p class="tutnote">Tap a yellow button to buy</p>';
     TABS[S.tab].forEach(function (k) { h += cardHtml(k); });
   }
   tray.innerHTML = h;
@@ -2477,13 +2477,13 @@ panelEl.addEventListener('click', function (e) {
     case 'fr': openPanel('fr'); break;
     case 'close': closePanel(); break;
     case 'perks': openPanel('fr'); break;
-    case 'daily': var m = claimDaily(); if (m) { note('Day gift: ' + m); moneyChanged = true; renderPanel(); } break;
+    case 'daily': var m = claimDaily(); if (m) { note('Gift: ' + m); moneyChanged = true; renderPanel(); } break;
     case 'tutorial': S.tut = 0; tutN = 0; closePanel(); showTut(); break;
     case 'reset':
       if (!resetStep) { resetStep = 1; renderPanel(); return; }
       closePanel(); applySave(null); S.tut = 0; moneyChanged = true; buildTray(); save();
       if (window.LLAuth && window.LLAuth.reset) window.LLAuth.reset();
-      note('Fresh start! Your lot has been reset.'); showTut(); break;
+      note('Progress reset'); showTut(); break;
   }
 });
 document.getElementById('panelClose').addEventListener('click', closePanel);
@@ -2495,11 +2495,11 @@ document.getElementById('gemPill').addEventListener('click', function () { openP
 
 /* ---------- tips: a short tutorial, then the odd hint ---------- */
 var TUT = [
-  { t: 'Tap anywhere on the lot to make everyone hustle!', ev: 'tap', n: 5 },
-  { t: 'Keep tapping! The fuller the meter, the more every car pays. It drains when you stop.', ev: 'tap', n: 12 },
-  { t: 'Open Upgrades to grow your lot.', ev: 'open' },
-  { t: 'Buy an upgrade. Yellow buttons are ones you can afford.', ev: 'buy' },
-  { t: 'Pinch to zoom, drag to look around.', ev: 'pan', wait: 9 }
+  { t: 'Tap the lot to hustle!', ev: 'tap', n: 5 },
+  { t: 'Keep tapping: a fuller meter means bigger fares', ev: 'tap', n: 12 },
+  { t: 'Open Upgrades to grow your lot', ev: 'open' },
+  { t: 'Buy an upgrade', ev: 'buy' },
+  { t: 'Pinch to zoom, drag to look around', ev: 'pan', wait: 9 }
 ];
 var tipEl = document.getElementById('tip'), tipT = 0, tutN = 0, tutAt = 0;
 function tip(t, secs) {
@@ -2521,7 +2521,7 @@ function tutEvent(ev) {
 }
 function tutNext() {
   S.tut++; tutN = 0;
-  if (S.tut >= TUT.length) { S.tut = 99; note('You are all set! Goals, golden cars and the map keep it growing.'); notifyAsk(); save(); }
+  if (S.tut >= TUT.length) { S.tut = 99; note('You are all set!'); notifyAsk(); save(); }
   showTut();
 }
 function tickTut() { if (S.tut < TUT.length && TUT[S.tut].wait && S.t - tutAt > TUT[S.tut].wait) tutNext(); }
@@ -2568,14 +2568,14 @@ function hud() {
   if (S.tab === 'fr' && S.t - lastFr > 0.5) { lastFr = S.t; updateFr(); }
   if (S.t - lastGoalChk > 1) {
     lastGoalChk = S.t; refreshTray(); tickTut();
-    var gr = goalsReady(); if (gr > lastGoals) { note('A goal is ready! Open Upgrades, then Goals.'); sfx('claim'); } lastGoals = gr;
+    var gr = goalsReady(); if (gr > lastGoals) { note('Goal ready to claim'); sfx('claim'); } lastGoals = gr;
     if (S.tab === 'goals' && sheet.classList.contains('open')) buildTray();
   }
   if (S.rush > 0) { rushBtn.hidden = false; rushBtn.disabled = true; rushBtn.className = 'rush on'; rushBtn.textContent = 'Rush hour ' + Math.ceil(S.rush) + 's'; }
   else if (S.rushReady > 0) { rushBtn.hidden = false; rushBtn.disabled = false; rushBtn.className = 'rush'; rushBtn.textContent = 'Rush hour! Tap (' + Math.ceil(S.rushReady) + 's)'; }
   else rushBtn.hidden = true;
 }
-rushBtn.addEventListener('click', function () { if (startRush()) { note('Rush hour! More drivers, and every car pays 50% more.'); save(); } });
+rushBtn.addEventListener('click', function () { if (startRush()) { note('Rush hour · +50% fares'); save(); } });
 recenterBtn.addEventListener('click', function () { S.view.user = false; });
 
 /* ---------- away earnings ---------- */

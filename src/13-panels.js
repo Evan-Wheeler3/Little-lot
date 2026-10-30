@@ -113,13 +113,13 @@ panelEl.addEventListener('click', function (e) {
     case 'fr': openPanel('fr'); break;
     case 'close': closePanel(); break;
     case 'perks': openPanel('fr'); break;
-    case 'daily': var m = claimDaily(); if (m) { note('Day gift: ' + m); moneyChanged = true; renderPanel(); } break;
+    case 'daily': var m = claimDaily(); if (m) { note('Gift: ' + m); moneyChanged = true; renderPanel(); } break;
     case 'tutorial': S.tut = 0; tutN = 0; closePanel(); showTut(); break;
     case 'reset':
       if (!resetStep) { resetStep = 1; renderPanel(); return; }
       closePanel(); applySave(null); S.tut = 0; moneyChanged = true; buildTray(); save();
       if (window.LLAuth && window.LLAuth.reset) window.LLAuth.reset();
-      note('Fresh start! Your lot has been reset.'); showTut(); break;
+      note('Progress reset'); showTut(); break;
   }
 });
 document.getElementById('panelClose').addEventListener('click', closePanel);
@@ -131,11 +131,11 @@ document.getElementById('gemPill').addEventListener('click', function () { openP
 
 /* ---------- tips: a short tutorial, then the odd hint ---------- */
 var TUT = [
-  { t: 'Tap anywhere on the lot to make everyone hustle!', ev: 'tap', n: 5 },
-  { t: 'Keep tapping! The fuller the meter, the more every car pays. It drains when you stop.', ev: 'tap', n: 12 },
-  { t: 'Open Upgrades to grow your lot.', ev: 'open' },
-  { t: 'Buy an upgrade. Yellow buttons are ones you can afford.', ev: 'buy' },
-  { t: 'Pinch to zoom, drag to look around.', ev: 'pan', wait: 9 }
+  { t: 'Tap the lot to hustle!', ev: 'tap', n: 5 },
+  { t: 'Keep tapping: a fuller meter means bigger fares', ev: 'tap', n: 12 },
+  { t: 'Open Upgrades to grow your lot', ev: 'open' },
+  { t: 'Buy an upgrade', ev: 'buy' },
+  { t: 'Pinch to zoom, drag to look around', ev: 'pan', wait: 9 }
 ];
 var tipEl = document.getElementById('tip'), tipT = 0, tutN = 0, tutAt = 0;
 function tip(t, secs) {
@@ -157,7 +157,7 @@ function tutEvent(ev) {
 }
 function tutNext() {
   S.tut++; tutN = 0;
-  if (S.tut >= TUT.length) { S.tut = 99; note('You are all set! Goals, golden cars and the map keep it growing.'); notifyAsk(); save(); }
+  if (S.tut >= TUT.length) { S.tut = 99; note('You are all set!'); notifyAsk(); save(); }
   showTut();
 }
 function tickTut() { if (S.tut < TUT.length && TUT[S.tut].wait && S.t - tutAt > TUT[S.tut].wait) tutNext(); }

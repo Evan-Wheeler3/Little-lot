@@ -41,14 +41,14 @@ function hud() {
   if (S.tab === 'fr' && S.t - lastFr > 0.5) { lastFr = S.t; updateFr(); }
   if (S.t - lastGoalChk > 1) {
     lastGoalChk = S.t; refreshTray(); tickTut();
-    var gr = goalsReady(); if (gr > lastGoals) { note('A goal is ready! Open Upgrades, then Goals.'); sfx('claim'); } lastGoals = gr;
+    var gr = goalsReady(); if (gr > lastGoals) { note('Goal ready to claim'); sfx('claim'); } lastGoals = gr;
     if (S.tab === 'goals' && sheet.classList.contains('open')) buildTray();
   }
   if (S.rush > 0) { rushBtn.hidden = false; rushBtn.disabled = true; rushBtn.className = 'rush on'; rushBtn.textContent = 'Rush hour ' + Math.ceil(S.rush) + 's'; }
   else if (S.rushReady > 0) { rushBtn.hidden = false; rushBtn.disabled = false; rushBtn.className = 'rush'; rushBtn.textContent = 'Rush hour! Tap (' + Math.ceil(S.rushReady) + 's)'; }
   else rushBtn.hidden = true;
 }
-rushBtn.addEventListener('click', function () { if (startRush()) { note('Rush hour! More drivers, and every car pays 50% more.'); save(); } });
+rushBtn.addEventListener('click', function () { if (startRush()) { note('Rush hour · +50% fares'); save(); } });
 recenterBtn.addEventListener('click', function () { S.view.user = false; });
 
 /* ---------- away earnings ---------- */

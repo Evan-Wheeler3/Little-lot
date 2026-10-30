@@ -19,7 +19,7 @@ function goalCash() { return Math.max(econRate() * 60, fee() * 10); }
 function claimGoal(k) {
   if (!goalReady(k)) return false;
   var cash = goalCash(); S.goal[k]++; giveMoney(cash); S.gems += GOAL_GEMS;
-  note('Goal complete! +$' + fmt(cash) + ' and ' + GOAL_GEMS + ' gems');
+  note('Goal done · +$' + fmt(cash) + ' · +' + GOAL_GEMS + ' gems');
   sfx('claim'); buzz('medium');
   return true;
 }

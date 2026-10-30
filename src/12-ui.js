@@ -125,8 +125,8 @@ var BIG = {
   valet: function () { return [doorTime().toFixed(2) + 's', 'per car door']; },
   fee: function () { return ['$' + fmtSmall(fee() / rushFee()), 'per car']; },
   ads: function () { return [Math.round(demand() / (S.rush > 0 ? 2.5 : 1) * 60), 'drivers a minute']; },
-  rep: function () { return ['x' + fmtX(repMul()), CLASS_NAMES[repTier()].toLowerCase()]; },
-  ev: function () { return [Math.min(S.lvl.ev, builtCols()) * 2, 'charging bays']; },
+  rep: function () { return ['+' + Math.round((repMul() - 1) * 100) + '%', 'fares from nicer cars'] ; },
+  ev: function () { return [Math.min(S.lvl.ev, builtCols()) * 2, 'bays paying +50% fares']; },
   concierge: function () { return S.lvl.concierge ? ['x' + fmtX(vipMul()), 'golden car bonus'] : ['Off', 'greets golden cars']; },
   promoter: function () { return S.lvl.promoter ? [rushLen() + 's', 'auto rush hours'] : ['Off', 'starts rush hours']; },
   crew: function () { return [Math.round(1 / drainRate()) + 's', 'full meter lasts']; },
@@ -223,7 +223,7 @@ function buildTray() {
   if (S.tab === 'fr') h = frHtml();
   else if (S.tab === 'goals') { h += '<p class="tabnote">' + TABNOTE.goals + '</p>'; GORDER.forEach(function (k) { h += goalHtml(k); }); }
   else {
-    if (S.tut === 3) h += '<p class="tutnote">Tap a yellow button to buy. Every upgrade makes the lot earn more.</p>';
+    if (S.tut === 3) h += '<p class="tutnote">Tap a yellow button to buy</p>';
     TABS[S.tab].forEach(function (k) { h += cardHtml(k); });
   }
   tray.innerHTML = h;
